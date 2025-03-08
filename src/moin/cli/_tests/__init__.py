@@ -182,3 +182,8 @@ def read_index_dump_latest_revs(out: str):
 def getBackupPath(backup_name):
     _, artifact_base_dir = get_dirs("")
     return artifact_base_dir / backup_name
+
+
+def get_html_dump_path():
+    _, artifact_base_dir = get_dirs("")
+    return artifact_base_dir / "html"
