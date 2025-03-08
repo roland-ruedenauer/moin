@@ -28,7 +28,7 @@ import sys
 from time import sleep
 
 from moin._tests import check_connection, get_dirs
-from moin.cli._tests import run, getBackupPath
+from moin.cli._tests import run, getBackupPath, get_html_dump_path
 from moin.cli._tests.scrapy.moincrawler.items import CrawlResult
 from moin import log
 
@@ -96,6 +96,11 @@ def save_all(load_help, welcome):
 @pytest.fixture(scope="package")
 def save_default(welcome):
     return run(["moin", "save", "-b", "default", "-f", getBackupPath("backup_default.moin")])
+
+
+@pytest.fixture(scope="package")
+def dump_html(welcome):
+    return run(["moin", "dump-html", "--directory", get_html_dump_path()])
 
 
 def get_crawl_server_log_path():
