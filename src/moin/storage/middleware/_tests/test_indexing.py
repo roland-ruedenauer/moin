@@ -399,6 +399,9 @@ class TestIndexingMiddleware:
         assert sorted(all_revids) == sorted(expected_all_revids)
         assert sorted(latest_revids) == sorted(expected_latest_revids)
 
+        # final close
+        self.imw.close()
+
     def test_revision_contextmanager(self):
         # check if rev.data is closed after leaving the with-block
         item_name = "foo"
