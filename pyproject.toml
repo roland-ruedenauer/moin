@@ -51,7 +51,7 @@ dependencies = [
     "markupsafe >= 3.0.2",  # safe html and xml
     "pygments >= 1.4",  # src code / text file highlighting
     "Werkzeug >= 3.0.0",  # WSGI toolkit
-    "whoosh >= 2.7.0",  # needed for indexed search
+    "Whoosh-Reloaded@git+https://github.com/roland-ruedenauer/whoosh-reloaded@fix_closing_mmap_instance",  # needed for indexed search
     "pdfminer.six",  # pdf -> text/plain conversion
     "passlib >= 1.6.0",  # strong password hashing (1.6 needed for consteq)
     "sqlalchemy >= 2.0",  # used by sqla store
