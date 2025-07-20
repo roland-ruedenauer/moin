@@ -56,6 +56,7 @@ import os
 import re
 import sys
 import shutil
+import threading
 import time
 
 from collections.abc import Mapping
@@ -502,6 +503,32 @@ class IndexingMiddleware:
         # or latest revs index):
         self.common_fields = set(latest_revs_fields.keys()) & set(all_revs_fields.keys())
 
+        # A list of potentially unfinished async writers
+        self.async_writers: list[AsyncWriter] = []
+        self.aw_lock = threading.Lock()
+
+    def _create_async_writer(self, *args):
+        self._drain_finished_async_writers()
+        writer = AsyncWriter(*args)
+        if not writer.writer:
+            with self.aw_lock:
+                self.async_writers.append(writer)
+                logging.debug(f"async writer count: {len(self.async_writers)}")
+        return writer
+
+    def _drain_finished_async_writers(self):
+        with self.aw_lock:
+            self.async_writers = [writer for writer in self.async_writers if not writer.running or writer.is_alive()]
+
+    def _wait_for_async_writer_completion(self, timeout=None):
+        with self.aw_lock:
+            logging.debug(f"waiting for {len(self.async_writers)} to finish")
+            for writer in self.async_writers:
+                while not writer.running:
+                    time.sleep(0.2)
+                writer.join()
+            self.async_writers = []
+
     def get_storage_params(self, tmp=False):
         kind, params, kw = self.index_storage
         params, kw = list(params), dict(kw)  # better make a (mutable) copy
@@ -557,6 +584,7 @@ class IndexingMiddleware:
         """
         Close all indexes.
         """
+        self._wait_for_async_writer_completion()
         for name in self.ix:
             self.ix[name].close()
         self.ix = {}
@@ -607,7 +635,7 @@ class IndexingMiddleware:
             async_ = False  # must wait for storage in ALL_REVS before check for latest
         doc = backend_to_index(meta, content, self.schemas[ALL_REVS], backend_name)
         if async_:
-            writer = AsyncWriter(self.ix[ALL_REVS])
+            writer = self._create_async_writer(self.ix[ALL_REVS])
         else:
             writer = self.ix[ALL_REVS].writer()
         with writer as writer:
@@ -626,7 +654,7 @@ class IndexingMiddleware:
             for idx_name in [LATEST_REVS, LATEST_META]:
                 doc = backend_to_index(meta, content, self.schemas[idx_name], backend_name)
                 if async_:
-                    writer = AsyncWriter(self.ix[idx_name])
+                    writer = self._create_async_writer(self.ix[idx_name])
                 else:
                     writer = self.ix[idx_name].writer()
                 with writer as writer:
@@ -634,7 +662,7 @@ class IndexingMiddleware:
 
     def remove_index_revision(self, revid, async_=True, idx_name=LATEST_REVS):
         if async_:
-            writer = AsyncWriter(self.ix[idx_name])
+            writer = self._create_async_writer(self.ix[idx_name])
         else:
             writer = self.ix[idx_name].writer()
         with writer as writer:
@@ -669,7 +697,7 @@ class IndexingMiddleware:
         Remove a single revision from indexes.
         """
         if async_:
-            writer = AsyncWriter(self.ix[ALL_REVS])
+            writer = self._create_async_writer(self.ix[ALL_REVS])
         else:
             writer = self.ix[ALL_REVS].writer()
         with writer as writer:
