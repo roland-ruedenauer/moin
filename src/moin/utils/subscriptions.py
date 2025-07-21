@@ -67,13 +67,13 @@ def get_subscribers(**meta):
         result_iterators.extend(searcher.documents(subscription_patterns=pattern) for pattern in patterns)
         subscribers = set()
         for user in chain.from_iterable(result_iterators):
-            email = user.get(EMAIL)
+            email = user[EMAIL] if EMAIL in user else None
             if email:
                 from moin.user import User
 
-                u = User(uid=user.get(ITEMID))
+                u = User(uid=user[ITEMID])
                 if u.may.read(fqname):
-                    locale = user.get(LOCALE, DEFAULT_LOCALE)
+                    locale = user[LOCALE] if LOCALE in user else DEFAULT_LOCALE
                     subscribers.add(Subscriber(user[ITEMID], user[NAME][0], email, locale))
     return subscribers
 
