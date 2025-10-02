@@ -106,12 +106,16 @@ ignore_missing_imports = true
 show_error_codes = true
 pretty = true
 strict = false
+mypy_path = "$MYPY_CONFIG_FILE_DIR/typings"
 
 [tool.pytest]
 minversion = "9.0.0"
 addopts = ["--ignore=_ui_tests"]
 norecursedirs = [".git", "_build", "tmp*", "env*", "dlc", "wiki", "support"]
 env_files = [".env", ".env.test"]
+
+[tool.mypy]
+mypy_path = "$MYPY_CONFIG_FILE_DIR/typings"
 
 [tool.ruff]
 line-length = 120
@@ -130,6 +134,7 @@ exclude = [
     ".tox",
     "build",
     "dist",
+    "typings",
 ]
 
 [tool.ruff.lint]
