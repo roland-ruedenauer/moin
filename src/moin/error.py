@@ -73,7 +73,7 @@ class CompositeError(Error):
 
     def __init__(self, message: Any) -> None:
         """Save system exception info before this exception is raised."""
-        Error.__init__(self, message)
+        super().__init__(message)
         self.innerException = sys.exc_info()
 
     def exceptions(self):
