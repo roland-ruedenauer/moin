@@ -157,6 +157,22 @@ unfixable = []
 "src/moin/config/default.py" = ["F401", "F403"]
 "src/moin/datastructures/__init__.py" = ["F401"]
 
+[tool.pylint.main]
+init-hook = 'import sys; sys.path.append(".venv/lib/python3.13/site-packages")'
+jobs = 2
+
+[tool.pylint.design]
+max-returns = 8
+
+[tool.pylint.format]
+max-line-length = 120
+
+[tool.pylint.messages_control]
+disable = [
+    "missing-class-docstring",
+    "missing-function-docstring"
+]
+
 [tool.bandit]
 exclude_dirs = ["quickinstall.py", "*/_tests/*", "*/_ui_tests/*", "scripts", "contrib/loadtesting"]
 skips = ["B101", "B105", "B106", "B307", "B311", "B403", "B608"]
