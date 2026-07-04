@@ -131,7 +131,7 @@ class MoinApp(Flask):
 
     def get_command_name(self) -> str:
         c = get_current_context(silent=True)
-        if getattr(c, "command", False):
+        if c is not None and getattr(c, "command", False):
             cmd_name = getattr(c.command, "name", "")
         else:
             cmd_name = ""
