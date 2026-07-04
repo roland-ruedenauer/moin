@@ -163,7 +163,6 @@ PTIME = "ptime"
 # Index names
 LATEST_REVS = "latest_revs"
 ALL_REVS = "all_revs"
-LATEST_META = "latest_meta"
 
 # values for ACTION key
 ACTION_SAVE = "SAVE"

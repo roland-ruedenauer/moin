@@ -79,24 +79,29 @@ class WikiConfigProtocol(Protocol):
     endpoints_excluded: list[str]
     expanded_quicklinks_size: int
     groups: Callable[[], BaseGroupsBackend]
+    html_pagetitle: str
     index_storage: IndexStorageConfig
     instance_dir: str
     interwikiname: str
     interwiki_map: dict[str, str]
+    interwiki_preferred: str
+    item_dict_regex: str
+    item_group_regex: str
     item_views: ItemViews
     language_default: str
     locale_default: str
     mail_enabled: bool
     mail_from: str | None
-    mail_username: str | None
     mail_password: str | None
     mail_smarthost: str | None
+    mail_username: str | None
     markdown_extensions: list[str] = []
     mimetypes_to_index_as_empty: list[str] = []
     mimetypes_xss_protect: list[str]
     namespace_mapping: NamespaceMapping
     navi_bar: NaviBarEntries
     password_checker: PasswordChecker | None
+    password_hasher_config: PasswordHasherConfig
     plugin_dirs: list[str]
     registration_hint: str
     registration_only_by_superuser: bool

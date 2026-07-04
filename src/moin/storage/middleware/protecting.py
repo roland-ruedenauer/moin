@@ -18,6 +18,7 @@ from typing import Any, Generator, TYPE_CHECKING
 
 import time
 
+# from whoosh.searching import Hit
 from whoosh.util.cache import lfu_cache
 
 from moin import log
@@ -88,6 +89,7 @@ class ProtectingMiddleware:
         self.allows = lfu_cache_decorator(self._allows)
         # placeholder to show we are passing meta data around without affecting lfu caches (see may_read_rev)
         self.meta: MetaData | None = None
+        self.fqnames: list[CompositeName] | None
 
     def _clear_acl_cache(self):
         # if we have modified the backend somehow so ACL lookup is influenced,
@@ -130,10 +132,11 @@ class ProtectingMiddleware:
         else:
             raise ValueError("need itemid or fqname")
 
-        meta_available = False
+        meta_available: bool = False
         if self.meta:
             # use meta data if available to avoid index query
             meta_keys = [*self.meta.keys()]
+            # TODO: should probably check for itemid or fqname, not both
             if (
                 itemid
                 and fqname
@@ -150,7 +153,7 @@ class ProtectingMiddleware:
         item: ProtectedItem | None = None
         if not meta_available or self._get_configured_acls(fqname)["hierarchic"]:
             # self.meta is not valid or namespace uses hierarchic acls and we need item parentids
-            item = self.get_item(short=True, **q)
+            item = self.get_item(**q)
             acl = item.acl
             fqname = item.fqname
             if acl is not None:
@@ -158,8 +161,7 @@ class ProtectingMiddleware:
 
         if self._get_configured_acls(fqname)["hierarchic"]:
             # check parent(s), recursively
-            parentids = item.parentids
-            if parentids:
+            if parentids := item.parentids:
                 acl_list = []
                 for parentid in parentids:
                     pacls = self.get_acls(parentid, None)
@@ -177,19 +179,21 @@ class ProtectingMiddleware:
     def query_parser(self, default_fields: list[str], idx_name: str = LATEST_REVS):
         return self.indexer.query_parser(default_fields, idx_name=idx_name)
 
-    def search(self, q, idx_name: str = LATEST_REVS, **kw) -> Generator[ProtectedRevision]:
-        for rev in self.indexer.search(q, idx_name, **kw):
-            rev = ProtectedRevision(self, rev)
-            if rev.allows(READ) or rev.allows(PUBREAD):
-                yield rev
+    def search(self, query, idx_name: str = LATEST_REVS, **kw) -> Generator[ProtectedRevision]:
+        for rev in self.indexer.search(query, idx_name, **kw):
+            p_rev = ProtectedRevision(self, rev)
+            if p_rev.allows(READ) or p_rev.allows(PUBREAD):
+                yield p_rev
 
-    def search_page(self, q, idx_name: str = LATEST_REVS, pagenum=1, pagelen=10, **kw) -> Generator[ProtectedRevision]:
-        for rev in self.indexer.search_page(q, idx_name, pagenum, pagelen, **kw):
-            rev = ProtectedRevision(self, rev)
-            if rev.allows(READ) or rev.allows(PUBREAD):
-                yield rev
+    def search_page(
+        self, query, idx_name: str = LATEST_REVS, pagenum=1, pagelen=10, **kw
+    ) -> Generator[ProtectedRevision]:
+        for rev in self.indexer.search_page(query, idx_name, pagenum, pagelen, **kw):
+            p_rev = ProtectedRevision(self, rev)
+            if p_rev.allows(READ) or p_rev.allows(PUBREAD):
+                yield p_rev
 
-    def search_meta(self, q, idx_name: str = LATEST_REVS, regex=None, **kw):
+    def search_meta(self, query, idx_name: str = LATEST_REVS, regex=None, **kw):
         """
         Yield an item's metadata, skipping any items where read permission is denied.
 
@@ -197,7 +201,7 @@ class ProtectingMiddleware:
         of the items in namespace subject to query restrictions. This is useful for reports
         such as Global Index, Global Tags, Wanted Items, Orphaned Items, etc.
         """
-        for meta in self.indexer.search_meta(q, idx_name, regex=regex, **kw):
+        for meta in self.indexer.search_meta(query, idx_name, regex=regex, **kw):
             meta[FQNAMES] = gen_fqnames(meta)
             result = self.may_read_rev(meta)
             if result:
@@ -208,14 +212,20 @@ class ProtectingMiddleware:
         Return true if user may read item revision represented by whoosh index hit.
         Called by ajaxsearch template, others.
         """
-        self.meta = meta
-        self.fqnames = gen_fqnames(meta)
-        may_read = self.allows(
-            tuple(self.user.name), meta.get(ACL, None), tuple(parent_names(meta[NAME])), meta[NAMESPACE], READ
-        )
-        return may_read
+        try:
+            self.meta = meta  # TODO: might be a Hit instance (see ajaxsearch.html)
+            self.fqnames = gen_fqnames(meta)
+            may_read: bool = self.allows(
+                tuple(self.user.name), meta.get(ACL, None), tuple(parent_names(meta[NAME])), meta[NAMESPACE], READ
+            )
+            return may_read
+        finally:
+            # TODO: reset on leave (currently would break search, user_acl_report and maybe other endpoints)
+            # self.meta = None
+            # self.fqnames = None
+            pass
 
-    def full_acls(self):
+    def _full_acls(self):
         """
         iterator over all alternatively possible full acls for this item,
         including before/default/after acl.
@@ -240,9 +250,11 @@ class ProtectingMiddleware:
         :rtype: bool
         :returns: True if you have permission or False
         """
+        assert self.meta is not None
+        assert self.fqnames is not None
         acl_cfg = self._get_configured_acls(self.fqnames[0])
         for user_name in user_names:
-            for full_acl in self.full_acls():
+            for full_acl in self._full_acls():
                 allowed = self.eval_acl(full_acl, acl_cfg["default"], user_name, right)
                 if allowed and pchecker(right, allowed, self.meta):
                     return True
@@ -294,8 +306,8 @@ class ProtectingMiddleware:
         item = self.indexer[name]
         return ProtectedItem(self, item)
 
-    def get_item(self, short=False, **query):
-        item = self.indexer.get_item(short=short, **query)
+    def get_item(self, **query):
+        item = self.indexer.get_item(**query)
         return ProtectedItem(self, item)
 
     def create_item(self, **query):
@@ -319,7 +331,7 @@ class ProtectingMiddleware:
         if item:
             item = ProtectedItem(self, item)
         else:
-            item = self.get_item(short=True, **fqname.query)
+            item = self.get_item(**fqname.query)
         allowed = item.allows(capability, user_names=usernames)
         return allowed
 

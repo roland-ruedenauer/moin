@@ -79,7 +79,6 @@ from moin.constants.keys import (
     TAGS,
     TEMPLATE,
     LATEST_REVS,
-    LATEST_META,
     EDIT_ROWS,
     FQNAMES,
     USERGROUP,
@@ -149,10 +148,9 @@ def find_matches(fq_name, s_re=None, e_re=None):
     :rtype: tuple
     :returns: start word, end word, matches dict
     """
-    idx_name = LATEST_REVS
-    qp = flaskg.storage.query_parser([NAMES, NAMENGRAM], idx_name=idx_name)
+    qp = flaskg.storage.query_parser([NAMES, NAMENGRAM], idx_name=LATEST_REVS)
     q = qp.parse(fq_name.value)
-    metas = flaskg.storage.search_meta(q, idx_name=idx_name, limit=None)
+    metas = flaskg.storage.search_meta(q, idx_name=LATEST_REVS, limit=None)
     fq_names = {fqname for meta in metas for fqname in meta[FQNAMES] if FQNAMES in meta}
     if fq_name in fq_names:
         fq_names.remove(fq_name)
@@ -1434,7 +1432,7 @@ class Item:
 
         return query
 
-    def get_index(self, startswith=None, selected_groups=None, regex=None, short=False):
+    def get_index(self, startswith=None, selected_groups=None, regex=None):
         """
         Get index enties for descendents of the matching items
 
@@ -1449,12 +1447,11 @@ class Item:
              - one for "dirs" (direct descendents that also contain descendents)
         """
         fqname = self.fqname
-        idx_name = LATEST_META if short else LATEST_REVS
         isglobalindex = not fqname.value or fqname.value == NAMESPACE_ALL
         query = self.build_index_query(startswith, selected_groups, isglobalindex)
         if not fqname.value.startswith(NAMESPACE_ALL + "/") and fqname.value != NAMESPACE_ALL:
             query = Term(NAMESPACE, fqname.namespace) & query
-        revs = flaskg.storage.search_meta(query, idx_name=idx_name, sortedby=NAME_EXACT, limit=None, regex=regex)
+        revs = flaskg.storage.search_meta(query, idx_name=LATEST_REVS, sortedby=NAME_EXACT, limit=None, regex=regex)
         return self.make_flat_index(revs, isglobalindex)
 
 

@@ -20,6 +20,7 @@ import os
 import sys
 
 from os import path, PathLike
+from pathlib import Path
 
 import flask.ctx
 
@@ -99,7 +100,7 @@ class MoinApp(Flask):
         self.register_error_handler(400, bad_request)
 
         with clock.timeit("create_app flask-cache"):
-            self.create_flask_cache()
+            self.cache = self.create_flask_cache()
 
         # init backends (routing, storage)
         with clock.timeit("create_app init backends"):
@@ -219,11 +220,11 @@ class MoinApp(Flask):
         self.register_blueprint(misc, url_prefix="/+misc")
         self.register_blueprint(serve, url_prefix="/+serve")
 
-    def create_flask_cache(self) -> None:
+    def create_flask_cache(self) -> Cache:
         # 'SimpleCache' caching uses a dict and is not thread safe according to the docs.
         cache = Cache(config={"CACHE_TYPE": "SimpleCache"})
         cache.init_app(self)
-        self.cache = cache
+        return cache
 
     def init_backends(self, create_backend: bool = False) -> None:
         """
@@ -262,6 +263,7 @@ class MoinApp(Flask):
             self.router.create()
         self.router.open()
         self.storage = indexing.IndexingMiddleware(
+            Path(self.cfg.instance_dir),
             self.cfg.index_storage,
             self.router,
             wiki_name=self.cfg.interwikiname,

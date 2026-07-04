@@ -15,6 +15,7 @@ from flask.cli import FlaskGroup
 from moin import log
 from moin.app import create_app
 from moin.cli.maint import (
+    cache,
     create_instance,
     dump_html,
     index,
@@ -79,6 +80,10 @@ cli.add_command(index.IndexDestroy)
 cli.add_command(index.IndexMove)
 cli.add_command(index.cli_IndexOptimize)
 cli.add_command(index.IndexDump)
+
+cli.add_command(cache.create_metadata_cache)
+cli.add_command(cache.destroy_metadata_cache)
+cli.add_command(cache.populate_metadata_cache)
 
 cli.add_command(serialization.Serialize)
 cli.add_command(serialization.Deserialize)

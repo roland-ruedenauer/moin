@@ -50,7 +50,7 @@ usually it is even just the small and thus quick latest-revs index.
 
 from __future__ import annotations
 
-from typing import Any, Generator, Iterator, TYPE_CHECKING
+from typing import Any, cast, Generator, Iterator, TYPE_CHECKING
 
 import gc
 import io
@@ -59,7 +59,8 @@ import re
 import shutil
 import time
 
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
+from pathlib import Path
 
 from flask import request
 
@@ -71,12 +72,14 @@ from whoosh.query import Every, Prefix, Term
 from whoosh.sorting import FieldFacet
 
 from moin import current_app, flaskg, log, user
-from moin.constants.keys import *  # noqa
 from moin.constants.contenttypes import CONTENTTYPE_USER
+from moin.constants.itemtypes import ITEMTYPE_DEFAULT
+from moin.constants.keys import *  # noqa
 from moin.converters import default_registry as converter_registry
 from moin.i18n import _
 from moin.search.analyzers import item_name_analyzer, MimeTokenizer, AclTokenizer
 from moin.storage.error import NoSuchItemError, ItemAlreadyExistsError
+from moin.storage.middleware.cache import MetaDataCache
 from moin.storage.middleware.routing import Backend
 from moin.storage.middleware.validation import ContentMetaSchema, UserMetaSchema, validate_data
 from moin.storage.types import Document, ItemData, MetaData, ValidationState
@@ -94,9 +97,11 @@ logging = log.getLogger(__name__)
 
 
 WHOOSH_FILESTORAGE = "FileStorage"
-INDEXES = [LATEST_REVS, ALL_REVS, LATEST_META]
+INDEXES = [LATEST_REVS, ALL_REVS]
 
 INDEXER_TIMEOUT = 20.0
+
+COMMON_FIELDS = {DATAID, ITEMID, ITEMTYPE, MTIME, NAMESPACE, NAME, PARENTID, REVID, REV_NUMBER}
 
 
 def search_names(name_prefix: str, limit: int | None = None) -> list[str]:
@@ -108,7 +113,7 @@ def search_names(name_prefix: str, limit: int | None = None) -> list[str]:
     :return: item names list
     """
 
-    idx_name = LATEST_META
+    idx_name = LATEST_REVS
     q = Prefix(NAME_EXACT, name_prefix)
     with flaskg.storage.indexer.ix[idx_name].searcher() as searcher:
         results = searcher.search(q, limit=limit)
@@ -288,14 +293,16 @@ def convert_to_indexable(meta: MetaData, data: ItemData, item_name: str | None =
 
 
 class IndexingMiddleware:
-    def __init__(self, index_storage: tuple, backend: Backend, acl_rights_contents=[], **kw):
+
+    def __init__(self, wiki_dir: Path, index_storage: tuple, backend: Backend, acl_rights_contents=[], **kw):
         """
         Store params, create schemas.
 
         See https://whoosh.readthedocs.io/en/latest/schema.html#built-in-field-types
         """
         self.index_storage = index_storage
-        self.backend = backend
+        self.backend: Backend = backend
+        self.metadata_cache = MetaDataCache(wiki_dir / "cache" / "metadata.db")
         self.ix: dict[str, Any] = {}  # open indexes
         self.schemas: dict[str, Schema] = {}  # existing schemas
 
@@ -401,37 +408,12 @@ class IndexingMiddleware:
         all_revs_fields = {ITEMID: ID(stored=True)}
         all_revs_fields.update(**common_fields)
 
-        # Small index for the latest revisions, used for queries such as has_item, authorization checks and
-        # the +index route. This index has no content or *NGRAMS, which improves query speed for large wikis
-        latest_meta_fields = {
-            # ITEMID from metadata - as there is only latest rev of same item here, it is unique
-            ITEMID: ID(unique=True, stored=True),
-            NAMESPACE: ID(stored=True),
-            NAME: TEXT(stored=True),
-            NAMES: TEXT(stored=True, multitoken_query="or", analyzer=item_name_analyzer(), field_boost=30.0),
-            NAME_EXACT: ID(field_boost=1.0),
-            REVID: ID(unique=True, stored=True),
-            REV_NUMBER: NUMERIC(stored=True),
-            PARENTID: ID(stored=True),
-            BACKENDNAME: ID(stored=True),
-            MTIME: DATETIME(stored=True),
-            ITEMTYPE: ID(stored=True),
-            CONTENTTYPE: TEXT(stored=True, multitoken_query="and", analyzer=MimeTokenizer()),
-            USERID: ID(stored=True),
-            ADDRESS: ID(stored=True),
-            HOSTNAME: ID(stored=True),
-            SIZE: NUMERIC(stored=True),
-            ACL: TEXT(analyzer=AclTokenizer(acl_rights_contents), multitoken_query="and", stored=True),
-        }
-
         latest_revisions_schema = Schema(**latest_revs_fields)
         all_revisions_schema = Schema(**all_revs_fields)
-        latest_index_schema = Schema(**latest_meta_fields)
 
         # schemas are needed by query parser and for index creation
         self.schemas[ALL_REVS] = all_revisions_schema
         self.schemas[LATEST_REVS] = latest_revisions_schema
-        self.schemas[LATEST_META] = latest_index_schema
 
         # Define dynamic fields
         dynamic_fields = [
@@ -450,9 +432,11 @@ class IndexingMiddleware:
 
         # what fields could whoosh result documents have (no matter whether all revs index
         # or latest revs index):
-        self.common_fields = set(latest_revs_fields.keys()) & set(all_revs_fields.keys())
+        # self.common_fields = set(latest_revs_fields.keys()) & set(all_revs_fields.keys())
 
-    def get_storage_params(self, tmp=False):
+        self.common_fields = COMMON_FIELDS
+
+    def get_storage_params(self, tmp: bool = False) -> tuple[str, type, list[Any], dict[str, Any]]:
         kind, params, kw = self.index_storage
         params, kw = list(params), dict(kw)  # better make a (mutable) copy
         if kind == WHOOSH_FILESTORAGE:
@@ -519,6 +503,8 @@ class IndexingMiddleware:
         for name in INDEXES:
             storage.create_index(self.schemas[name], indexname=name)
 
+        self.metadata_cache.create()
+
     def destroy(self, tmp=False):
         """
         Destroy all indexes.
@@ -529,6 +515,8 @@ class IndexingMiddleware:
             index_dir = params[0]
             if os.path.exists(index_dir):
                 shutil.rmtree(index_dir)
+
+        self.metadata_cache.destroy()
 
     def move_index(self):
         """
@@ -575,23 +563,22 @@ class IndexingMiddleware:
                     == doc[REVID]
                 )
         if is_latest:
-            for idx_name in [LATEST_REVS, LATEST_META]:
-                doc = backend_to_index(meta, content, self.schemas[idx_name], backend_name)
-                if async_:
-                    writer = AsyncWriter(self.ix[idx_name])
-                else:
-                    writer = self.ix[idx_name].writer()
-                with writer as writer:
-                    writer.update_document(**doc)
+            doc = backend_to_index(meta, content, self.schemas[LATEST_REVS], backend_name)
+            if async_:
+                writer = AsyncWriter(self.ix[LATEST_REVS])
+            else:
+                writer = self.ix[LATEST_REVS].writer()
+            with writer as writer:
+                writer.update_document(**doc)
 
-    def remove_index_revision(self, revid: str, async_: bool = True, idx_name: str = LATEST_REVS) -> None:
+    def remove_index_revision(self, revid: str, async_: bool = True) -> None:
         if async_:
-            writer = AsyncWriter(self.ix[idx_name])
+            writer = AsyncWriter(self.ix[LATEST_REVS])
         else:
-            writer = self.ix[idx_name].writer()
+            writer = self.ix[LATEST_REVS].writer()
         with writer as writer:
             # find out itemid related to the revid we want to remove:
-            with self.ix[idx_name].searcher() as searcher:
+            with self.ix[LATEST_REVS].searcher() as searcher:
                 docnum_remove = searcher.document_number(revid=revid)
                 if docnum_remove is not None:
                     itemid = searcher.stored_fields(docnum_remove)[ITEMID]
@@ -602,7 +589,7 @@ class IndexingMiddleware:
                     # we have a latest revision, just update the document in the index:
                     assert len(latest_backends_revids) == 1  # this item must have only one latest revision
                     latest_backend_revid = latest_backends_revids[0]
-                    # we must fetch from backend because schema for idx_name is different than for ALL_REVS
+                    # we must fetch from backend because schema for LATEST_REVS is different than for ALL_REVS
                     # (and we can't be sure we have all fields stored, too)
                     meta, _ = self.backend.retrieve(*latest_backend_revid)
                     # we only use meta (not data), because we do not want to transform data->content again (this
@@ -610,7 +597,9 @@ class IndexingMiddleware:
                     with self.ix[ALL_REVS].searcher() as searcher:
                         doc = searcher.document(revid=latest_backend_revid[1])
                         content = doc[CONTENT]
-                    doc = backend_to_index(meta, content, self.schemas[idx_name], backend_name=latest_backend_revid[0])
+                    doc = backend_to_index(
+                        meta, content, self.schemas[LATEST_REVS], backend_name=latest_backend_revid[0]
+                    )
                     writer.update_document(**doc)
                 else:
                     # this is no revision left in this item that could be the new "latest rev", just kill the rev
@@ -620,14 +609,14 @@ class IndexingMiddleware:
         """
         Remove a single revision from indexes.
         """
+        self.metadata_cache.remove(revid)
         if async_:
             writer = AsyncWriter(self.ix[ALL_REVS])
         else:
             writer = self.ix[ALL_REVS].writer()
         with writer as writer:
             writer.delete_by_term(REVID, revid)
-        for idx_name in [LATEST_REVS, LATEST_META]:
-            self.remove_index_revision(revid, async_=async_, idx_name=idx_name)
+        self.remove_index_revision(revid, async_=async_)
 
     def _modify_index(
         self,
@@ -713,20 +702,19 @@ class IndexingMiddleware:
             index.close()
 
         # now build the indexes for latest revisions:
-        for idx_name in [LATEST_REVS, LATEST_META]:
-            index = storage.open_index(idx_name)
-            try:
-                self._modify_index(
-                    index,
-                    self.schemas[idx_name],
-                    latest_backends_revids,
-                    "add",
-                    procs=procs,
-                    limitmb=limitmb,
-                    multisegment=multisegment,
-                )
-            finally:
-                index.close()
+        index = storage.open_index(LATEST_REVS)
+        try:
+            self._modify_index(
+                index,
+                self.schemas[LATEST_REVS],
+                latest_backends_revids,
+                "add",
+                procs=procs,
+                limitmb=limitmb,
+                multisegment=multisegment,
+            )
+        finally:
+            index.close()
 
     def update(self, tmp=False):
         """
@@ -765,19 +753,18 @@ class IndexingMiddleware:
         finally:
             index_all.close()
 
-        # update LATEST_REVS and LATEST_META
-        for idx_name in [LATEST_REVS, LATEST_META]:
-            index_latest = storage.open_index(idx_name)
-            try:
-                with index_latest.searcher() as searcher:
-                    ix_revids = {doc[REVID] for doc in searcher.all_stored_fields()}
-                backend_latest_revids = {revid for name, revid in backend_latest_backends_revids}
-                upd_revids = backend_latest_revids - ix_revids
-                upd_revids = [(revids_backends[revid], revid) for revid in upd_revids]
-                self._modify_index(index_latest, self.schemas[idx_name], upd_revids, "update")
-                self._modify_index(index_latest, self.schemas[idx_name], del_revids, "delete")
-            finally:
-                index_latest.close()
+        # update LATEST_REVS
+        index_latest = storage.open_index(LATEST_REVS)
+        try:
+            with index_latest.searcher() as searcher:
+                ix_revids = {doc[REVID] for doc in searcher.all_stored_fields()}
+            backend_latest_revids = {revid for name, revid in backend_latest_backends_revids}
+            upd_revids = backend_latest_revids - ix_revids
+            upd_revids = [(revids_backends[revid], revid) for revid in upd_revids]
+            self._modify_index(index_latest, self.schemas[LATEST_REVS], upd_revids, "update")
+            self._modify_index(index_latest, self.schemas[LATEST_REVS], del_revids, "delete")
+        finally:
+            index_latest.close()
 
         return changed
 
@@ -874,7 +861,7 @@ class IndexingMiddleware:
             for hit in searcher.search(q, **kw):
                 doc = hit.fields()
                 latest_doc = doc if idx_name == LATEST_REVS else None
-                item = Item(self, latest_doc=latest_doc, itemid=doc[ITEMID])
+                item = self.get_item_by_itemid(doc[ITEMID], latest_doc)
                 yield item.get_revision(doc[REVID], doc=doc)
 
     def search_page(self, q, idx_name: str = LATEST_REVS, pagenum=1, pagelen=10, **kw) -> Generator[Revision]:
@@ -887,7 +874,7 @@ class IndexingMiddleware:
             for hit in searcher.search_page(q, pagenum, pagelen=pagelen, **kw):
                 doc = hit.fields()
                 latest_doc = doc if idx_name == LATEST_REVS else None
-                item = Item(self, latest_doc=latest_doc, itemid=doc[ITEMID])
+                item = self.get_item_by_itemid(doc[ITEMID], latest_doc=latest_doc)
                 yield item.get_revision(doc[REVID], doc=doc)
 
     def search_meta(self, q, idx_name: str = LATEST_REVS, regex=None, **kw) -> Generator[MetaData]:
@@ -929,7 +916,7 @@ class IndexingMiddleware:
         """
         for doc in self._documents(idx_name, **kw):
             latest_doc = doc if idx_name == LATEST_REVS else None
-            item = Item(self, latest_doc=latest_doc, itemid=doc[ITEMID])
+            item = self.get_item_by_itemid(doc[ITEMID], latest_doc=latest_doc)
             yield item.get_revision(doc[REVID], doc=doc)
 
     def _documents(self, idx_name: str = LATEST_REVS, **kw) -> Generator[Document]:
@@ -947,27 +934,80 @@ class IndexingMiddleware:
         """
         Return a Revision matching the kw args.
         """
-        doc = self._document(idx_name, **kw)
-        if doc:
-            latest_doc = doc if idx_name == LATEST_REVS else None
-            item = Item(self, latest_doc=latest_doc, itemid=doc[ITEMID])
-            return item.get_revision(doc[REVID], doc=doc)
+        if (doc := self._document(idx_name, **kw)) is None:
+            return None
+        latest_doc = doc if idx_name == LATEST_REVS else None
+        item = self.lookup(latest_doc=latest_doc, itemid=doc[ITEMID])
+        return item.get_revision(doc[REVID], doc=doc)
 
-    def _document(self, idx_name: str = LATEST_REVS, short=False, **kw) -> Document | None:
+    def _document(self, idx_name: str = LATEST_REVS, **kw) -> Document | None:
         """
         Return a document matching the kw args (internal use only).
         """
-        if short:
-            idx_name = LATEST_META
-        with self.ix[idx_name].searcher() as searcher:
-            return searcher.document(**kw)
+        if len(kw) == 1 and REVID in kw:
+            # lookup meta data cache entry by revid
+            entry = self.metadata_cache.get(kw[REVID])
+        elif idx_name == LATEST_REVS and len(kw) == 1 and ITEMID in kw:
+            # lookup meta data cache entry by itemid
+            entry = self.metadata_cache.get_by_itemid(kw[ITEMID])
+        elif idx_name == LATEST_REVS and len(kw) == 2 and NAME_EXACT in kw and NAMESPACE in kw:
+            # lookup meta data cache entry by namespace and name
+            entry = self.metadata_cache.get_by_name(kw[NAMESPACE], kw[NAME_EXACT])
+        elif idx_name == LATEST_REVS and len(kw) == 3 and ITEMID in kw and NAMESPACE in kw and CONTENTTYPE in kw:
+            # lookup meta data cache entry by itemid
+            entry = self.metadata_cache.get_by_itemid(kw[ITEMID])
+            if entry:
+                assert entry.namespace == kw[NAMESPACE]
+        else:
+            logging.info(f"meta data cache lookup not possible for keys {kw.keys()}")
+            # execute a whoosh query
+            with self.ix[idx_name].searcher() as searcher:
+                return searcher.document(**kw)
+
+        if entry:
+            logging.info(f"found meta data cache entry {entry.revid}")
+            # convert to dict and apply required field content modifications for use as indexer Document
+            document = entry.to_dict()
+            # TODO: need all the names here!
+            document[NAME] = [document[NAME]]
+            namespace = document[NAMESPACE]
+            document[NAMES] = [f"{namespace}/{name}" if namespace else name for name in document[NAME]]
+            # TODO: additional modifications?
+            return document
+
+        return None
+
+    def lookup(self, latest_doc: Document | None = None, **query) -> Item:
+        """
+        :param indexer: indexer middleware instance
+        :param latest_doc: if caller already has a latest-revs index whoosh document
+                           it can be given there, to avoid us fetching same doc again
+                           from the index
+        :kwargs **query: any unique fieldname=value for the latest-revs index, e.g.:
+                         name_exact="foo" or itemid="....." to fetch the item's current
+                         doc from the index (if not given via latest_doc).
+        """
+        name = cast(str | None, query.get(NAME_EXACT))
+        if latest_doc is None:
+            # we need to call the method without acl check to avoid endless recursion:
+            latest_doc = self._document(**query)
+            if latest_doc is None:
+                # no such item, create a dummy doc that has a NAME entry to
+                # avoid issues in the name(s) property code. if this was a
+                # lookup for some specific item (using a name_exact query), we
+                # put that name into the NAME list, otherwise it'll be empty:
+                latest_doc = {}
+                for field, value in query.items():
+                    latest_doc[field] = [value] if field in UFIELDS_TYPELIST else value
+                latest_doc[NAME] = latest_doc[NAME_EXACT] if NAME_EXACT in query else []
+        return Item(self, name, latest_doc)
 
     def has_item(self, name: str) -> bool:
         if name.startswith("@itemid/"):
-            item = Item(self, short=True, **{ITEMID: name[8:]})
+            item = self.get_item_by_itemid(name[8:])
         else:
             fqname = split_fqname(name)
-            item = Item(self, short=True, **{NAME_EXACT: fqname.value, NAMESPACE: fqname.namespace})
+            item = self.get_item_by_name(fqname)
         return bool(item)
 
     def __getitem__(self, name: str) -> Item:
@@ -975,36 +1015,52 @@ class IndexingMiddleware:
         Return item with <name> (may be a new or existing item).
         """
         if name.startswith("@itemid/"):
-            return Item(self, **{ITEMID: name[8:]})
+            return self.get_item_by_itemid(name[8:])
         fqname = split_fqname(name)
-        return Item(self, **{NAME_EXACT: fqname.value, NAMESPACE: fqname.namespace})
+        return self.get_item_by_name(fqname)
 
-    def get_item(self, short=False, **query) -> Item:
+    def get_item(self, **query) -> Item:
         """
         Return item identified by the query (may be a new or existing item).
 
         :kwargs query: e.g. name_exact="Foo" or itemid="..." or ...
                      (must be a unique fieldname=value for the latest-revs index)
         """
-        return Item(self, short=short, **query)
+        return self.lookup(**query)
+
+    def get_item_by_itemid(self, itemid: str, latest_doc: Document | None = None) -> Item:
+        query: dict[str, Any] = {ITEMID: itemid}
+        return self.lookup(latest_doc, **query)
+
+    def get_item_by_name(self, fqname: CompositeName, latest_doc: Document | None = None) -> Item:
+        query: dict[str, Any] = {NAME_EXACT: fqname.value, NAMESPACE: fqname.namespace}
+        return self.lookup(latest_doc, **query)
 
     def create_item(self, **query) -> Item:
         """
         Return item identified by the query (must be a new item).
+        Raise an exception if it already exists.
 
         :kwargs query: e.g. name_exact="Foo" or itemid="..." or ...
                      (must be a unique fieldname=value for the latest-revs index)
         """
-        return Item.create(self, **query)
+        item = self.lookup(**query)
+        if item:
+            raise ItemAlreadyExistsError(repr(query))
+        return item
 
     def existing_item(self, **query):
         """
         Return item identified by query (must be an existing item).
+        Raise an exception if it does not exist.
 
         :kwargs query: e.g. name_exact="Foo" or itemid="..." or ...
                      (must be a unique fieldname=value for the latest-revs index)
         """
-        return Item.existing(self, **query)
+        item = self.lookup(**query)
+        if not item:
+            raise NoSuchItemError(repr(query))
+        return item
 
     def get_document(self, revid: str, retry: bool = False, **kwargs):
         """
@@ -1117,40 +1173,25 @@ class PropertiesMixin:
 
 class Item(PropertiesMixin):
 
-    def __init__(self, indexer: IndexingMiddleware, latest_doc=None, short=False, **query):
+    def __init__(self, indexer: IndexingMiddleware, name: str | None, document: Document) -> None:
         """
         :param indexer: indexer middleware instance
-        :param latest_doc: if caller already has a latest-revs index whoosh document
+        :param name:
+        :param document: if caller already has a latest-revs index whoosh document
                            it can be given there, to avoid us fetching same doc again
                            from the index
-        :kwargs **query: any unique fieldname=value for the latest-revs index, e.g.:
-                         name_exact="foo" or itemid="....." to fetch the item's current
-                         doc from the index (if not given via latest_doc).
         """
         self.indexer = indexer
-        self.backend = self.indexer.backend
-        self._name = query.get(NAME_EXACT)
-        if latest_doc is None:
-            # we need to call the method without acl check to avoid endless recursion:
-            latest_doc = self.indexer._document(short=short, **query)
-            if latest_doc is None:
-                # no such item, create a dummy doc that has a NAME entry to
-                # avoid issues in the name(s) property code. if this was a
-                # lookup for some specific item (using a name_exact query), we
-                # put that name into the NAME list, otherwise it'll be empty:
-                latest_doc = {}
-                for field, value in query.items():
-                    latest_doc[field] = [value] if field in UFIELDS_TYPELIST else value
-                latest_doc[NAME] = latest_doc[NAME_EXACT] if NAME_EXACT in query else []
-        self._current = latest_doc
+        self._name = name
+        self._current = document
 
-    def _get_itemid(self):
+    @property
+    def itemid(self) -> str | None:
         return self._current.get(ITEMID)
 
-    def _set_itemid(self, value):
+    @itemid.setter
+    def itemid(self, value: str) -> None:
         self._current[ITEMID] = value
-
-    itemid = property(_get_itemid, _set_itemid)
 
     @property
     def meta(self):
@@ -1159,36 +1200,16 @@ class Item(PropertiesMixin):
     @property
     def parentids(self) -> set[str]:
         """
-        compute list of parent itemids
+        Compute list of parent itemids.
 
         :return: parent itemids (set)
         """
         parent_ids = set()
         for parent_name in self.parentnames:
-            rev = self.indexer._document(idx_name=LATEST_META, **{NAMESPACE: self.namespace, NAME_EXACT: parent_name})
+            rev = self.indexer._document(idx_name=LATEST_REVS, **{NAMESPACE: self.namespace, NAME_EXACT: parent_name})
             if rev:
                 parent_ids.add(rev[ITEMID])
         return parent_ids
-
-    @classmethod
-    def create(cls, indexer, **query):
-        """
-        Create a new item and return it, raise exception if it already exists.
-        """
-        item = cls(indexer, **query)
-        if not item:
-            return item
-        raise ItemAlreadyExistsError(repr(query))
-
-    @classmethod
-    def existing(cls, indexer, **query):
-        """
-        Get an existing item and return it, raise exception if it does not exist.
-        """
-        item = cls(indexer, **query)
-        if item:
-            return item
-        raise NoSuchItemError(repr(query))
 
     def __repr__(self):
         return f"<Item {self.name}>"
@@ -1352,7 +1373,7 @@ class Item(PropertiesMixin):
         if self.itemid is None:
             self.itemid = meta[ITEMID]
 
-        backend = self.backend
+        backend: Backend = self.indexer.backend
 
         if not overwrite:
             revid = meta.get(REVID)
@@ -1370,6 +1391,26 @@ class Item(PropertiesMixin):
         assert revid
         assert meta[REVID] == revid
 
+        # update the metadata cache
+        # TODO: handling overwrites; deal with multiple names
+        entry = MetaDataCache.Entry(
+            revid=meta[REVID],
+            dataid=meta[DATAID],
+            itemid=meta[ITEMID],
+            parentid=meta.get(PARENTID, None),
+            rev_number=meta.get(REV_NUMBER, 1),
+            mtime=meta[MTIME],
+            namespace=meta[NAMESPACE],
+            name=meta[NAME][0],
+            itemtype=meta.get(ITEMTYPE, ITEMTYPE_DEFAULT),
+            acl=meta.get(ACL, None),
+        )
+        if not overwrite:
+            self.indexer.metadata_cache.insert(entry)
+        else:
+            self.indexer.metadata_cache.update(entry)
+
+        # TODO: trigger async index update
         self.indexer.index_revision(meta, content, backend_name, force_latest=not overwrite)
         gc.collect()  # triggers close of index files from is_latest search
         if not overwrite:
@@ -1393,7 +1434,8 @@ class Item(PropertiesMixin):
         query = {DATAID: rev.meta[DATAID]}
         with flaskg.storage.indexer.ix[ALL_REVS].searcher() as searcher:
             refcount = len(list(searcher.document_numbers(**query)))
-        self.backend.remove(rev.backend_name, revid, destroy_data=refcount == 1)
+        # TODO: deal with read-only backend
+        rev.backend.remove(revid, destroy_data=refcount == 1)
         self.indexer.remove_revision(revid)
         my_parent = rev.meta.get(PARENTID)
         with flaskg.storage.indexer.ix[ALL_REVS].searcher() as searcher:
@@ -1419,6 +1461,18 @@ class Item(PropertiesMixin):
             self.destroy_revision(rev.revid)
 
 
+class Doc:
+
+    def __init__(self, doc: Document, fields: Sequence[str]) -> None:
+        self._doc = doc
+        self._fields = fields
+
+    def __getitem__(self, key):
+        if key in self._fields:
+            return "nope"
+        return self._doc[key]
+
+
 class Revision(PropertiesMixin):
     """
     An existing revision (exists in the backend).
@@ -1434,26 +1488,31 @@ class Revision(PropertiesMixin):
             else:
                 doc = item.indexer.get_document(idx_name=ALL_REVS, revid=revid, retry=retry)
 
+        assert doc is not None
+
         if is_current:
-            revid = doc.get(REVID)
-            if revid is None:
+            if REVID not in doc:
                 raise KeyError
+            revid = doc[REVID]
+
+        assert revid
+        assert NAMESPACE in doc
+
         self.item = item
         self.revid = revid
-        self.backend = item.backend
-        self.backend_name = doc[BACKENDNAME]
+        self.backend = item.indexer.backend.get_backend_for_namespace(doc[NAMESPACE])
         self._doc = doc
         self.meta = Meta(self, self._doc)
-        self._data = None
+        self._data: ItemData | None = None
         if name and name in self.names:
-            self._name = name
+            self._name: str | None = name
         else:
             self._name = None
         # Note: this does not immediately raise a KeyError for non-existing revs any more
         # If you access data or meta, it will, though.
 
-    def _load(self):
-        meta, data = self.backend.retrieve(self.backend_name, self.revid)  # raises KeyError if rev does not exist
+    def _load(self) -> tuple[MetaData, ItemData]:
+        meta, data = self.backend.retrieve(self.revid)  # raises KeyError if rev does not exist
         self.meta = Meta(self, self._doc, meta)
         self._data = data
         return meta, data
@@ -1462,6 +1521,7 @@ class Revision(PropertiesMixin):
     def data(self) -> ItemData:
         if self._data is None:
             self._load()
+            assert self._data is not None  # make mypy happy
         return self._data
 
     def close(self):
@@ -1492,10 +1552,14 @@ class Meta(Mapping):
     def __init__(self, revision: Revision, doc: Document, meta: MetaData | None = None) -> None:
         self.revision = revision
         self._doc = doc or {}
-        self._meta = meta or {}
+        self._meta: MetaData = meta or {}
+        # TODO: may get rid of this
         self._common_fields = revision.item.indexer.common_fields
 
-    def __contains__(self, key) -> bool:
+    def _load_meta(self):
+        self._meta, _ = self.revision._load()
+
+    def __contains__(self, key: object) -> bool:
         try:
             self[key]
         except KeyError:
@@ -1505,7 +1569,7 @@ class Meta(Mapping):
 
     def __iter__(self):
         if not self._meta:
-            self._meta, _ = self.revision._load()
+            self._load_meta()
         return iter(self._meta)
 
     def __getitem__(self, key):
@@ -1521,7 +1585,7 @@ class Meta(Mapping):
                 value = utctimestamp(value)
             return value
         else:
-            self._meta, _ = self.revision._load()
+            self._load_meta()
             return self._meta[key]
 
     def __hash__(self):

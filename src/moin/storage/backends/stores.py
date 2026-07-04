@@ -106,6 +106,7 @@ class Backend(BackendBase):
     def close(self) -> None:
         self.meta_store.close()
         self.data_store.close()
+        self.meta_cache = None
 
     @override
     def __iter__(self) -> Iterator[str]:

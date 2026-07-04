@@ -6,6 +6,9 @@ from __future__ import annotations
 from io import BufferedReader, BytesIO
 from typing import Any, TypeAlias
 
+RevID = str
+"""A revision ID (UUID value)"""
+
 Document = dict[str, Any]
 """A indexer document"""
 

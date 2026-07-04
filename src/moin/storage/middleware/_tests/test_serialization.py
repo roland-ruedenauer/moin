@@ -5,7 +5,10 @@
 MoinMoin - serializer/deserializer tests.
 """
 
+from typing import cast
+
 from io import BytesIO
+from pathlib import Path
 
 import pytest
 
@@ -18,6 +21,7 @@ from ..serialization import serialize, deserialize
 from moin.constants.keys import NAME, CONTENTTYPE, ITEMTYPE
 from moin.constants.namespaces import NAMESPACE_DEFAULT
 
+from moin.storage.backends import BackendBase
 from moin.storage.backends.stores import Backend
 from moin.storage.stores.memory import BytesStore, FileStore
 
@@ -53,16 +57,18 @@ def make_middleware(request: pytest.FixtureRequest, tmpdir):
     # Scenario
     meta_store = BytesStore()
     data_store = FileStore()
-    _backend = Backend(meta_store, data_store)
+    backend = cast(BackendBase, Backend(meta_store, data_store))
     namespaces = [(NAMESPACE_DEFAULT, "backend")]
-    backends = {"backend": _backend}
-    backend = RoutingBackend(namespaces, backends)
-    backend.create()
-    backend.open()
-    request.addfinalizer(backend.destroy)
-    request.addfinalizer(backend.close)
+    backends = {"backend": backend}
+    routing_be = RoutingBackend(namespaces, backends)
+    routing_be.create()
+    routing_be.open()
+    request.addfinalizer(routing_be.destroy)
+    request.addfinalizer(routing_be.close)
 
-    mw = IndexingMiddleware(index_storage=(WHOOSH_FILESTORAGE, (str(tmpdir / "foo"),), {}), backend=backend)
+    mw = IndexingMiddleware(
+        Path(tmpdir), index_storage=(WHOOSH_FILESTORAGE, (str(tmpdir / "foo"),), {}), backend=routing_be
+    )
     mw.create()
     mw.open()
     request.addfinalizer(mw.destroy)

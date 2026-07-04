@@ -9,7 +9,7 @@ MoinMoin - common utilities for CLI commands.
 from __future__ import annotations
 
 from moin import current_app, log
-from moin.storage.backends.stores import BackendBase
+from moin.storage.backends import BackendBase
 
 logging = log.getLogger(__name__)
 
@@ -27,6 +27,14 @@ def get_backends(backends: str | None, all_backends: bool) -> set[BackendBase]:
     if not backends:
         logging.warning("no backends specified")
         return set()
+    existing_backends = set(current_app.cfg.backend_mapping)
+    specified_backends = set(backends.split(","))
+    if not specified_backends.issubset(existing_backends):
+        print("Error: Wrong backend name given.")
+        print("Given Backends: %r" % specified_backends)
+        print("Configured Backends: %r" % existing_backends)
+        raise SystemExit(1)
+    return {current_app.cfg.backend_mapping.get(backend_name) for backend_name in specified_backends}
 
     existing_backends = set(current_app.cfg.backend_mapping)
     requested_backends = set(backends.split(","))

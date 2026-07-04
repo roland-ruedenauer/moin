@@ -15,7 +15,7 @@ from flask.cli import FlaskGroup
 
 from moin import current_app, flaskg, log
 from moin.app import create_app
-from moin.constants.keys import LATEST_REVS, ALL_REVS, LATEST_META
+from moin.constants.keys import LATEST_REVS, ALL_REVS
 from moin.utils.filesys import wiki_index_exists
 
 logging = log.getLogger(__name__)
@@ -133,7 +133,7 @@ def IndexDump(tmp, truncate):
         logging.error(ERR_NO_INDEX)
         raise SystemExit(1)
     logging.info("Index dump started")
-    for idx_name in [LATEST_REVS, ALL_REVS, LATEST_META]:
+    for idx_name in [LATEST_REVS, ALL_REVS]:
         print(f" {'-' * 10} {idx_name} {'-' * 60}")
         for kvs in current_app.storage.dump(tmp=tmp, idx_name=idx_name):
             for k, v in kvs:

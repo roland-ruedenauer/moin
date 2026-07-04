@@ -128,7 +128,7 @@ class TestIndexingMiddleware(TestIndexingMiddlewareBase):
         rev = item.store_revision(meta, BytesIO(data), return_rev=True)
         assert rev
         revid = rev.revid
-        # Check if we have the revision now:
+        # check if we have the revision now:
         item = self.imw[item_name]
         assert item  # does exist
         rev = item.get_revision(revid)
@@ -511,6 +511,21 @@ class TestIndexingMiddleware(TestIndexingMiddlewareBase):
         rev_u = item.get_revision(rev_u.revid)
         assert rev_u.meta[NAMESPACE] == NAMESPACE_USERS
         assert rev_u.meta[NAME] == [item_name_u.split("/")[1]]
+
+    def test_item_with_alias_names(self):
+        name = "foo"
+        data = b"bar"
+        item = self.get_item(name)
+        assert item is not None
+        assert not item  # item does not exist
+        names = [name, "guests/foo", "dead-horse"]
+        rev = item.store_revision({NAME: names}, BytesIO(data), return_rev=True)
+        assert rev
+        for name in names:
+            item_ = self.imw.get_item(name_exact=name)
+            assert item_.names == names
+            rev_ = item_.get_revision(rev.revid)
+            assert rev_.revid == rev.revid
 
     def test_parentnames(self):
         item = self.get_item("child")

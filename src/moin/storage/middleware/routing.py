@@ -11,6 +11,7 @@ Route requests to different backends depending on the namespace.
 from __future__ import annotations
 
 from moin.constants.keys import NAME, BACKENDNAME, NAMESPACE
+from moin.storage.backends import BackendBase
 from moin.storage.types import ItemData, MetaData
 
 from typing import Iterator, TYPE_CHECKING
@@ -56,9 +57,11 @@ class Backend:
         """
         self.namespaces = namespaces
         self.backends = backends
+        self.namespace_to_backend_name: dict[str, str] = {}
         for namespace, backend_name in namespaces:
             assert isinstance(namespace, str)
             assert backend_name in backends
+            self.namespace_to_backend_name[namespace] = backend_name
 
     @classmethod
     def from_uri(cls, uri: str) -> Self:
@@ -74,6 +77,19 @@ class Backend:
     def close(self):
         for backend in self.backends.values():
             backend.close()
+
+    def get_backend_name(self, namespace: str) -> str:
+        """
+        Return the backend name for a given namespace
+        """
+        return self.namespace_to_backend_name[namespace]
+
+    def get_backend_for_namespace(self, namespace: str) -> BackendBase:
+        """
+        Return the backend for a given namespace
+        """
+        backend_name = self.get_backend_name(namespace)
+        return self.backends[backend_name]
 
     def _get_backend(self, fq_names: list[str]) -> tuple[str, list[str], str]:
         """
@@ -100,8 +116,7 @@ class Backend:
 
     def retrieve(self, backend_name: str, revid: str) -> tuple[MetaData, ItemData]:
         backend = self.backends[backend_name]
-        meta, data = backend.retrieve(revid)
-        return meta, data
+        return backend.retrieve(revid)
 
     # writing part
     def create(self):

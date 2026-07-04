@@ -21,12 +21,10 @@ class TestMacroDateTimeBase:
         MacroDateTimeBase_obj = MacroDateTimeBase()
         test_time_args = "2023-08-07T11:11:11+0533"
         ts = MacroDateTimeBase_obj.parse_time(test_time_args)
-        expected = 1691386691.0
-        assert ts == expected
+        assert ts == 1691386691.0
 
         result = format_date_time(utcfromtimestamp(ts))
-        expected = "2023-08-07 05:38:11z"
-        assert result == expected
+        assert result == "2023-08-07 05:38:11z"
 
         flaskg.user.valid = True  # show_time creates ISO 8601 dates if user is not logged in
         result = format_date_time(utcfromtimestamp(ts))

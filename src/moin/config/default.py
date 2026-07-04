@@ -93,8 +93,8 @@ class ConfigFunctionality:
     config_check_enabled: bool
     content_dir: str
     content_security_policy: str
-    content_security_policy_report_only: str
     content_security_policy_limit_per_day: int
+    content_security_policy_report_only: str
     contenttype_disabled: list[str]
     contenttype_enabled: list[str]
     data_dir: str
@@ -106,12 +106,15 @@ class ConfigFunctionality:
     endpoints_excluded: list[str]
     expanded_quicklinks_size: int
     groups: Callable[[], BaseGroupsBackend]
+    html_pagetitle: str
     index_storage: IndexStorageConfig
     instance_dir: str
     interwikiname: str
     interwiki_map: dict[str, str]
+    interwiki_preferred: str
     item_dict_regex: str
     item_group_regex: str
+    item_license: str
     item_views: ItemViews
     language_default: str
     locale_default: str

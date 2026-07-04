@@ -436,8 +436,9 @@ def _trashed(namespace):
 @admin.route("/user_acl_report/<uid>", methods=["GET"])
 @require_permission(SUPERUSER)
 def user_acl_report(uid):
+    storage = flaskg.storage
     query = Not(Term(NAMESPACE, NAMESPACE_USERPROFILES))
-    all_metas = flaskg.storage.search_meta(query, idx_name=LATEST_REVS, sortedby=[NAMESPACE, NAME], limit=None)
+    all_metas = storage.search_meta(query, idx_name=LATEST_REVS, sortedby=[NAMESPACE, NAME], limit=None)
     theuser = user.User(uid=uid)
     itemwise_acl = []
     for meta in all_metas:
@@ -451,12 +452,14 @@ def user_acl_report(uid):
         parentnames = tuple(parent_names(meta[NAME]))
         usernames = tuple(theuser.name)
         acl = meta.get(ACL, None)
+        # TODO: search_meta does only return items accessible to the current user
+        # TODO: allows() requires members meta and fqnames set in the indexer (instance with lifetime of the current request)
         last_item_result = {
-            "read": flaskg.storage.allows(usernames, acl, parentnames, meta[NAMESPACE], READ),
-            "write": flaskg.storage.allows(usernames, acl, parentnames, meta[NAMESPACE], WRITE),
-            "create": flaskg.storage.allows(usernames, acl, parentnames, meta[NAMESPACE], CREATE),
-            "admin": flaskg.storage.allows(usernames, acl, parentnames, meta[NAMESPACE], ADMIN),
-            "destroy": flaskg.storage.allows(usernames, acl, parentnames, meta[NAMESPACE], DESTROY),
+            "read": storage.allows(usernames, acl, parentnames, meta[NAMESPACE], READ),
+            "write": storage.allows(usernames, acl, parentnames, meta[NAMESPACE], WRITE),
+            "create": storage.allows(usernames, acl, parentnames, meta[NAMESPACE], CREATE),
+            "admin": storage.allows(usernames, acl, parentnames, meta[NAMESPACE], ADMIN),
+            "destroy": storage.allows(usernames, acl, parentnames, meta[NAMESPACE], DESTROY),
         }
         itemwise_acl.append({**acl_parts, **last_item_result})
     return render_template(

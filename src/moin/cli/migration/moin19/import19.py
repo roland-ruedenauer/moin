@@ -535,7 +535,7 @@ class PageRevision:
             except NoSuchRevisionError:
                 pass  # should not happen
             meta[MTIME] += 1  # it is now either 0 or prev rev mtime + 1
-            data = ""
+            content = ""
             try:
                 editlog_data = editlog.find_rev(revno)
             except KeyError:
@@ -557,16 +557,18 @@ class PageRevision:
                     }
                 else:
                     raise NoSuchRevisionError(f"Item {item.name!r} has no revision {revno}.")
-            meta, data = split_body(content)
+            meta, content = split_body(content)
         meta.update(editlog_data)
         format = meta.pop("format", self.backend.format_default)
         if format.startswith("csv"):
             format = "csv"  # drop trailing sep character as in "format csv ;"
         meta[CONTENTTYPE] = FORMAT_TO_CONTENTTYPE.get(format, CONTENTTYPE_DEFAULT)
-        data = self._process_data(meta, data)
+
+        content = self._process_data(meta, content)
         if format == "csv":
-            data = data.lstrip()  # leading blank lines confuses csv.sniffer
-        data = data.encode(CHARSET19)
+            content = content.lstrip()  # leading blank lines confuses csv.sniffer
+
+        data = content.encode(CHARSET19)
         size, hash_name, hash_digest = hash_hexdigest(data)
         meta[hash_name] = hash_digest
         meta[SIZE] = size
