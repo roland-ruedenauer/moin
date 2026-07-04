@@ -11,7 +11,6 @@ obfuscated string passed as the first macro argument.
 from __future__ import annotations
 
 from moin import flaskg
-
 from moin.utils.tree import moin_page, xlink
 from moin.macros._base import MacroInlineBase, fail_message
 from moin.mail.sendmail import decodeSpamSafeEmail

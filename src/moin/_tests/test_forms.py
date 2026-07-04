@@ -9,6 +9,7 @@ import pytest
 
 import datetime
 import json
+
 from calendar import timegm
 
 from moin import current_app

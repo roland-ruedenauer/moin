@@ -94,6 +94,7 @@ class DefaultSecurityPolicy:
         """
         if attr in current_app.cfg.acl_rights_contents:
             return lambda itemname: flaskg.storage.may(itemname, attr, usernames=self.names)
+
         if attr in current_app.cfg.acl_rights_functions:
 
             def multiuser_may():
@@ -105,6 +106,7 @@ class DefaultSecurityPolicy:
                 return False
 
             return multiuser_may
+
         raise AttributeError(attr)
 
 

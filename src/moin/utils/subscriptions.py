@@ -29,7 +29,6 @@ from moin.constants.keys import (
     SUBSCRIPTION_PATTERNS,
     TAGS,
 )
-
 from moin.utils.names import CompositeName
 
 logging = log.getLogger(__name__)

@@ -48,7 +48,8 @@ DESTROY_ALL = "DESTROY_ALL"
 
 
 def msgs():
-    """Encapsulate the main notification messages.
+    """
+    Encapsulate the main notification messages.
 
     :return: A dictionary of notification messages.
     """

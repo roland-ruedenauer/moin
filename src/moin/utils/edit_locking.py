@@ -64,7 +64,7 @@ class Edit_Utils:
     """
     Provide edit locking and save preview draft functions. Edit locking is optional, see wikiconfig.
 
-    An instance of Edit_Utils is added to flaskg near the start of every +modify transaction.
+    An instance of Edit_Utils is added to Flask globals near the start of every +modify transaction.
     The instance has an open db connection that will be closed within the transaction teardown.
     """
 

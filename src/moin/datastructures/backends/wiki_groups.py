@@ -16,7 +16,6 @@ see HelpOnConfiguration.
 from __future__ import annotations
 
 from moin import flaskg
-
 from moin.constants.keys import CURRENT, USERGROUP
 from moin.datastructures.backends import GreedyGroup, BaseGroupsBackend, GroupDoesNotExistError
 

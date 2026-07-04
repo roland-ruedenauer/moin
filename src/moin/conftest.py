@@ -52,17 +52,14 @@ def cfg():
 @pytest.fixture
 def app(cfg):
     namespace_mapping, backend_mapping, acl_mapping = create_simple_mapping("stores:memory:", cfg.default_acl)
-    more_config = dict(
+    app = create_app_ext(
+        flask_config_dict=dict(SECRET_KEY="foobarfoobar", SERVER_NAME="localhost:8080", TESTING=True),
+        moin_config_class=cfg,
         namespace_mapping=namespace_mapping,
         backend_mapping=backend_mapping,
         acl_mapping=acl_mapping,
         create_backend=True,  # create backend storage and index
         destroy_backend=True,  # remove index and storage at app shutdown
-    )
-    app = create_app_ext(
-        flask_config_dict=dict(SECRET_KEY="foobarfoobar", SERVER_NAME="localhost:8080", TESTING=True),
-        moin_config_class=cfg,
-        **more_config,
     )
     try:
         yield app

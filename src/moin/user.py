@@ -159,7 +159,9 @@ def update_user_query(**query):
 
 
 def search_users(**query):
-    """Searches for a users with given query keys/values"""
+    """
+    Searches for a users with given query keys/values
+    """
     # Since item name is a list, it's possible a list have been passed as parameter.
     # No problem, since user always have just one name (TODO: validate single name for user)
     if query.get(NAME_EXACT) and isinstance(query.get(NAME_EXACT), list):
@@ -184,7 +186,7 @@ def get_editor(userid, addr, hostname):
         userdata = User(userid)
         if userdata.mailto_author and userdata.email:
             return "email", userdata.email
-        elif userdata.name:
+        if userdata.name:
             interwiki = getInterwikiHome(userdata.name0)
             if interwiki:
                 result = ("interwiki", interwiki)

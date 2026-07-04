@@ -773,5 +773,5 @@ def setup_jinja_env(jinja_env: Environment) -> None:
     )
 
     # if Jinja whitespace control options are turned on, it becomes obvious why the default is off
-    # current_app.jinja_env.trim_blocks = True
-    # current_app.jinja_env.lstrip_blocks = True
+    # jinja_env.trim_blocks = True
+    # jinja_env.lstrip_blocks = True

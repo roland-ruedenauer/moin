@@ -8,7 +8,7 @@ Tests for auth.http.
 
 import pytest
 
-from flask import request as flask_request
+from flask import request
 
 from moin import flaskg
 from moin.auth.http import HTTPAuthMoin
@@ -28,12 +28,12 @@ class TestHTTPAuthMoin:
                 self.password = "test_pass"
 
         flaskg.user.auth_method = "http"
-        flask_request.authorization = Auth()
+        request.authorization = Auth()
 
         yield
 
         flaskg.user.auth_method = "invalid"
-        flask_request.authorization = None
+        request.authorization = None
 
     def test_request(self):
         # create a new user

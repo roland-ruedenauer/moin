@@ -147,21 +147,23 @@ def split_interwiki(wikiurl: str | bytes) -> tuple[str, str, str, str]:
     # Base case: no colon in wikiurl
     if "/" not in wikiurl:
         return "Self", "", NAME_EXACT, wikiurl
+
     wikiname = field = namespace = ""
+
     if not wikiurl.startswith("/"):
         interwiki_mapping = set()
         for interwiki_name in current_app.cfg.interwiki_map:
             interwiki_mapping.add(interwiki_name.split("/")[0])
-        wikiname, item_name = split_namespace(interwiki_mapping, wikiurl)
+        wikiname, item_name = split_namespace(list(interwiki_mapping), wikiurl)
         if wikiname:
             wikiurl = wikiurl[len(wikiname) + 1 :]
         namespace, field, item_name = split_fqname(wikiurl)
         if not wikiname:
             wikiname = "Self"
         return wikiname, namespace, field, item_name
-    else:
-        namespace, field, item_name = split_fqname(wikiurl.split("/", 1)[1])
-        return "Self", namespace, field, item_name
+
+    namespace, field, item_name = split_fqname(wikiurl.split("/", 1)[1])
+    return "Self", namespace, field, item_name
 
 
 def join_wiki(wikiurl, wikitail, field, namespace):

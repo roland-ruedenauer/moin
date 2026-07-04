@@ -1542,9 +1542,9 @@ def jfu_server(item_name):
 
 
 def contenttype_selects_gen():
-    for g in content_registry.group_names:
-        description = ", ".join([e.display_name for e in content_registry.groups[g]])
-        yield g, L_(g), description
+    for group in content_registry.group_names:
+        description = ", ".join([entry.display_name for entry in content_registry.groups[group]])
+        yield group, L_(group), description
     yield "Unknown Items", None, "Items of contenttype unknown to MoinMoin"
 
 
@@ -1674,7 +1674,7 @@ def index(item_name: str):
 
     selected_groups = form["contenttype"].value
     startswith = request.values.get("startswith")
-    dirs, files = item.get_index(startswith, selected_groups, short=True)
+    dirs, files = item.get_index(startswith, selected_groups)
     dirs_fullname = [x.fullname for x in dirs]
     initials = request.values.get("initials")
     if initials:

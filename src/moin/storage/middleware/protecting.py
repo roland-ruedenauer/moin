@@ -46,7 +46,9 @@ ACL_CACHE = 600  # avoid ACL recalculation: user, namespace, ACL, parents, right
 
 
 def pchecker(right: str, allowed: bool, item: Item) -> bool:
-    """Check blog entry publication date."""
+    """
+    Check blog entry publication date.
+    """
     if allowed and right == PUBREAD:
         # PUBREAD permission is only granted after publication time (ptime)
         # if PTIME is not defined, we use MTIME (which is usually in the past)
@@ -84,7 +86,7 @@ class ProtectingMiddleware:
         self.get_acls = lfu_cache_decorator(self._get_acls)
         lfu_cache_decorator = lfu_cache(ACL_CACHE)
         self.allows = lfu_cache_decorator(self._allows)
-        # placeholder to show we are passing meta data around without affecting lfu caches
+        # placeholder to show we are passing meta data around without affecting lfu caches (see may_read_rev)
         self.meta: MetaData | None = None
 
     def _clear_acl_cache(self):
@@ -95,7 +97,7 @@ class ProtectingMiddleware:
 
     def _get_configured_acls(self, fqname: CompositeName):
         """
-        for a fully-qualified itemname (namespace:name), get the acl configuration
+        For a fully-qualified itemname (namespace:name), get the acl configuration
         for that (part of the) namespace.
 
         :param fqname: fully qualified itemname
@@ -112,7 +114,7 @@ class ProtectingMiddleware:
 
     def _get_acls(self, itemid: str | None = None, fqname: CompositeName | None = None):
         """
-        return a list of (alternatively valid) effective acls for the item
+        Return a list of (alternatively valid) effective acls for the item
         identified via itemid or fqname.
         this can be a list just containing the item's own acl (as only alternative),
         or a list with None, indicating no acl was found (in non-hierarchic mode).
@@ -123,15 +125,14 @@ class ProtectingMiddleware:
         if itemid is not None:
             q = {ITEMID: itemid}
         elif fqname is not None:
-            # itemid might be None for new, not yet stored items,
-            # but we have fqname then
+            # itemid might be None for new, not yet stored items, but we have fqname then
             q = fqname.query
         else:
             raise ValueError("need itemid or fqname")
 
         meta_available = False
         if self.meta:
-            """use meta data if available to avoid index query"""
+            # use meta data if available to avoid index query
             meta_keys = [*self.meta.keys()]
             if (
                 itemid
@@ -148,7 +149,7 @@ class ProtectingMiddleware:
 
         item: ProtectedItem | None = None
         if not meta_available or self._get_configured_acls(fqname)["hierarchic"]:
-            """self.meta is not valid or namespace uses hierarchic acls and we need item parentids"""
+            # self.meta is not valid or namespace uses hierarchic acls and we need item parentids
             item = self.get_item(short=True, **q)
             acl = item.acl
             fqname = item.fqname

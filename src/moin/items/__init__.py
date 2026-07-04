@@ -645,8 +645,8 @@ def _build_contenttype_query(groups: list[str]) -> Query:
     Build a Whoosh query from a list of contenttype groups.
     """
     queries = []
-    for g in groups:
-        for e in content_registry.groups[g]:
+    for group in groups:
+        for e in content_registry.groups[group]:
             ct_unicode = str(e.content_type)
             queries.append(Term(CONTENTTYPE, ct_unicode))
             queries.append(Prefix(CONTENTTYPE, ct_unicode + ";"))

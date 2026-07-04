@@ -358,6 +358,7 @@ def setup_user() -> user.User:
     either through the session or through a login.
     """
     logger.debug("running setup_user")
+
     # init some stuff for auth processing:
     flaskg._login_multistage = None
     flaskg._login_multistage_name = None
@@ -385,6 +386,7 @@ def setup_user() -> user.User:
     # if we still have no user obj, create a dummy:
     if not userobj:
         userobj = user.User(name=ANON, auth_method="invalid")
+
     # if we have a valid user we store it in the session
     if userobj.valid:
         session["user.itemid"] = userobj.itemid
@@ -392,6 +394,7 @@ def setup_user() -> user.User:
         session["user.auth_method"] = userobj.auth_method
         session["user.auth_attribs"] = userobj.auth_attribs
         session["user.session_token"] = userobj.get_session_token()
+
     return userobj
 
 

@@ -101,7 +101,7 @@ INDEXER_TIMEOUT = 20.0
 
 def search_names(name_prefix: str, limit: int | None = None) -> list[str]:
     """
-    get list of item names beginning with name_prefix
+    Get a list of item names beginning with name_prefix.
 
     :param name_prefix: item NAME prefix
     :param limit: limit number of search results
@@ -160,8 +160,9 @@ def backend_to_index(meta: MetaData, content: str, schema: Schema, backend_name:
 
 
 def backend_subscriptions_to_index(subscriptions):
-    """Split subscriptions list to subscription_ids and subscription_patterns lists
-    which match the fields of the whoosh schema
+    """
+    Split subscriptions list to subscription_ids and subscription_patterns lists
+    which match the fields of the whoosh schema.
 
     :param subscriptions: user subscriptions meta
     :return: tuple containing a list of subscription_ids and a list of
@@ -192,11 +193,13 @@ def convert_to_indexable(meta: MetaData, data: ItemData, item_name: str | None =
                    metadata as a side effect
     :returns: indexable content, text/plain, unicode object
     """
+
     if not item_name or (item_name and meta.get(NAMESPACE)):
         try:
-            item_name = meta[NAMESPACE] + "/" + meta[NAME][0]
+            item_name = f"{ meta[NAMESPACE] }/{ meta[NAME][0] }"
         except IndexError:
-            item_name = meta[NAMESPACE] + "/" + "DoesNotExist"
+            item_name = f"{ meta[NAMESPACE] }/DoesNotExist"
+    assert item_name is not None
     fqname = split_fqname(item_name)
 
     class PseudoRev:
@@ -834,7 +837,8 @@ class IndexingMiddleware:
         qp.add_plugin(RegexPlugin())
 
         def userid_pseudo_field_factory(fieldname: str):
-            """generate a translator function, that searches for the userid
+            """
+            generate a translator function, that searches for the userid
             in the given fieldname when provided with the username
             """
 
@@ -1099,8 +1103,7 @@ class PropertiesMixin:
     @property
     def ptime(self) -> int | None:
         dt = self.meta.get(PTIME)
-        if dt is not None:
-            return utctimestamp(dt)
+        return utctimestamp(dt) if dt is not None else None
 
     @property
     def names(self) -> list[str]:
@@ -1109,8 +1112,7 @@ class PropertiesMixin:
     @property
     def mtime(self) -> int | None:
         dt = self.meta.get(MTIME)
-        if dt is not None:
-            return utctimestamp(dt)
+        return utctimestamp(dt) if dt is not None else None
 
 
 class Item(PropertiesMixin):
@@ -1219,7 +1221,7 @@ class Item(PropertiesMixin):
 
     def preprocess(self, meta: MetaData, data: ItemData) -> tuple[MetaData, ItemData, str]:
         """
-        preprocess a revision before it gets stored and put into index.
+        Preprocess a revision before it gets stored and put into index.
         """
         content = convert_to_indexable(meta, data, self.name, is_new=True)
         return meta, data, content
@@ -1261,8 +1263,8 @@ class Item(PropertiesMixin):
         meta: MetaData,
         data: ItemData,
         overwrite: bool = False,
-        trusted: bool = False,
-        name: str | None = None,  # TODO ?
+        trusted: bool = False,  # True for loading a serialized representation or other trusted sources
+        name: str | None = None,  # TODO name we decoded from URL path
         action: str = ACTION_SAVE,
         remote_addr: str | None = None,
         userid: str | None = None,
