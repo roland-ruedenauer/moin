@@ -18,7 +18,10 @@ import os
 import urllib.request
 import urllib.parse
 
+from datetime import datetime
 from json import dumps
+
+from jinja2 import Environment
 
 from flask import url_for, request, session, flash
 from flask_theme import get_theme, render_theme_template
@@ -470,7 +473,7 @@ class ThemeSupport:
         if item_name and parent_item_name:
             return parent_item_name
 
-    def parentnames(self, names):
+    def parentnames(self, names: list[str]) -> set[str]:
         """
         Compute list of parent names (same order as in names, but no dupes)
         Copied from indexing.py
@@ -482,7 +485,7 @@ class ThemeSupport:
 
     # Properties ##############################################################
 
-    def login_url(self):
+    def login_url(self) -> str | None:
         """
         Return URL usable for user login
 
@@ -496,7 +499,7 @@ class ThemeSupport:
             url = url or url_for("frontend.login")
         return url
 
-    def get_namespaces(self):
+    def get_namespaces(self) -> list[tuple[str, CompositeName]]:
         """
         Return a sorted list of tuples (namespace name, fq name of ns home item).
 
@@ -512,7 +515,7 @@ class ThemeSupport:
             namespace_root_mapping.append((namespace or "~", fq_namespace.get_root_fqname()))
         return sorted(namespace_root_mapping)
 
-    def item_exists(self, itemname: str):
+    def item_exists(self, itemname: str) -> bool:
         """
         Check whether the item pointed to by the given itemname exists or not
 
@@ -521,7 +524,7 @@ class ThemeSupport:
         """
         return self.storage.has_item(itemname)
 
-    def itemlink_exists(self, itemlink: str):
+    def itemlink_exists(self, itemlink: str) -> bool:
         """
         Check whether the item pointed to by the given itemlink exists or not
 
@@ -538,7 +541,7 @@ class ThemeSupport:
             item_name = info.item_name
         return self.item_exists(item_name)
 
-    def variables_css(self):
+    def variables_css(self) -> bool:
         """
         Check whether this theme has a variables.css file
 
@@ -548,7 +551,7 @@ class ThemeSupport:
         path = os.path.join(get_current_theme().path, "static/css/variables.css")
         return os.path.isfile(path)
 
-    def is_markup_or_text(self, contenttype):
+    def is_markup_or_text(self, contenttype: str) -> bool:
         """
         Return true if contenttype is markup or text-like.
 
@@ -557,7 +560,7 @@ class ThemeSupport:
         return contenttype in CONTENTTYPE_MARKUP + CONTENTTYPE_TEXT + CONTENTTYPE_MOIN_19
 
 
-def get_editor_info(meta, external=False):
+def get_editor_info(meta, external: bool = False) -> dict[str, str | None]:
     """
     Create a dict of formatted user info.
 
@@ -613,7 +616,7 @@ def get_editor_info(meta, external=False):
     return result
 
 
-def shorten_fqname(fqname, length=25):
+def shorten_fqname(fqname: CompositeName, length: int = 25) -> str:
     """
     Shorten a given long fqname so that it looks good depending upon whether
     the field is a UUID or not.
@@ -635,7 +638,7 @@ def shorten_fqname(fqname, length=25):
     return name
 
 
-def shorten_item_name(name, length=25):
+def shorten_item_name(name: str, length: int = 25) -> str:
     """
     Shorten item names
 
@@ -663,7 +666,7 @@ def shorten_item_name(name, length=25):
     return name
 
 
-def shorten_id(name, length=7):
+def shorten_id(name: str, length: int = 7) -> str:
     """
     Shorten IDs to specified length
 
@@ -689,7 +692,7 @@ MIMETYPE_TO_CLASS = {
 }
 
 
-def contenttype_to_class(contenttype):
+def contenttype_to_class(contenttype: str) -> str:
     """
     Convert a contenttype string to a css class.
     """
@@ -700,7 +703,7 @@ def contenttype_to_class(contenttype):
     return f"moin-mime-{cls}"
 
 
-def utctimestamp(dt):
+def utctimestamp(dt: datetime) -> int:
     """
     convert a datetime object (UTC) to a UNIX timestamp (UTC)
 
@@ -712,7 +715,7 @@ def utctimestamp(dt):
     return timegm(dt.timetuple())
 
 
-def shorten_ctype(contenttype):
+def shorten_ctype(contenttype: str) -> str:
     """
     Returns user understandable terms for contenttype.
 
@@ -723,7 +726,7 @@ def shorten_ctype(contenttype):
     return CONTENTTYPES_MAP.get(contenttype, "Unknown")
 
 
-def time_hh_mm(dt):
+def time_hh_mm(dt: datetime) -> str:
     """
     Convert a datetime object or timestamp into a short string of the form HH:MM
     where HH varies from 0 to 23.
@@ -731,7 +734,7 @@ def time_hh_mm(dt):
     return show_time.format_time(dt, fmt="HH:mm")
 
 
-def time_datetime(dt):
+def time_datetime(dt: datetime) -> str:
     """
     Alternative to babel datetimeformat, allows user to choose ISO 8601 format
     by checking box in usersettings Options. Input may be datetime object or
@@ -740,7 +743,7 @@ def time_datetime(dt):
     return show_time.format_date_time(dt)
 
 
-def setup_jinja_env(jinja_env):
+def setup_jinja_env(jinja_env: Environment) -> None:
     jinja_env.filters["shorten_fqname"] = shorten_fqname
     jinja_env.filters["shorten_item_name"] = shorten_item_name
     jinja_env.filters["shorten_id"] = shorten_id

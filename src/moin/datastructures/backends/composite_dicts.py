@@ -23,7 +23,7 @@ class CompositeDicts(BaseDictsBackend):
         super().__init__()
         self._backends = backends
 
-    def __getitem__(self, dict_name):
+    def __getitem__(self, dict_name: str):
         """
         Get a dict by its name. First match counts.
         """
@@ -34,7 +34,7 @@ class CompositeDicts(BaseDictsBackend):
                 pass
         raise DictDoesNotExistError(dict_name)
 
-    def __contains__(self, dict_name):
+    def __contains__(self, dict_name: str):
         """
         Check if a dict called <dict_name> is available in any of the backends.
         """
@@ -43,5 +43,5 @@ class CompositeDicts(BaseDictsBackend):
                 return True
         return False
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"<{self.__class__} backends={self._backends}>"

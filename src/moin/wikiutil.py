@@ -163,7 +163,7 @@ class WikiLinkAnalyzer:
 
     __slots__ = "map_adapter"
 
-    def __init__(self, app: MoinApp):
+    def __init__(self, app: MoinApp) -> None:
         self.map_adapter: MapAdapter = app.url_map.bind("127.0.0.1")  # address is irrelevant
 
     def __call__(self, link: str) -> WikiLinkInfo:

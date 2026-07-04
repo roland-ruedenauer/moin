@@ -36,7 +36,7 @@ def duration(seconds):
     return _("years"), (seconds + 15768000) // 31536000
 
 
-def format_date_time(utc_dt=None, fmt="yyyy-MM-dd HH:mm:ss", interval="datetime"):
+def format_date_time(utc_dt=None, fmt="yyyy-MM-dd HH:mm:ss", interval="datetime") -> str:
     """
     Add an ISO 8601 alternative to Babel's date/time formatting.
 

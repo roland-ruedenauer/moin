@@ -24,14 +24,14 @@ from moin.utils.names import get_fqname, split_fqname, split_namespace
 logger = getLogger(__name__)
 
 
-def is_local_wiki(wiki_name):
+def is_local_wiki(wiki_name: str) -> bool:
     """
     Check if <wiki_name> is this wiki.
     """
     return wiki_name in ["", "Self", current_app.cfg.interwikiname]
 
 
-def is_known_wiki(wiki_name):
+def is_known_wiki(wiki_name: str) -> bool:
     """
     Check if <wiki_name> is a known wiki name.
 
@@ -118,7 +118,7 @@ def get_download_file_name(fqname):
         return f"{fqname.field}-{fqname.value}"
 
 
-def split_interwiki(wikiurl):
+def split_interwiki(wikiurl: str | bytes) -> tuple[str, str, str, str]:
     """
     Split an interwiki name into wiki name and page name, e.g.::
 

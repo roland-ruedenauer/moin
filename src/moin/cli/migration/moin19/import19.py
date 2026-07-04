@@ -41,6 +41,7 @@ from moin.constants.itemtypes import ITEMTYPE_DEFAULT
 from moin.constants.namespaces import NAMESPACE_DEFAULT, NAMESPACE_USERPROFILES, NAMESPACE_USERS
 from moin.constants.rights import SPECIAL_USERS
 from moin.storage.error import NoSuchRevisionError
+from moin.storage.types import MetaData
 from moin.utils.mimetype import MimeType
 from moin.utils.crypto import generate_token, make_uuid, hash_hexdigest
 from moin import security
@@ -360,10 +361,10 @@ class PageBackend:
         self,
         path,
         deleted_mode=DELETED_MODE_KEEP,
-        default_markup="wiki",
-        target_namespace="",
+        default_markup: str = "wiki",
+        target_namespace: str = "",
         item_category_regex=r"(?P<all>Category(?P<key>(?!Template)\S+))",
-        latest_rev_only=False,
+        latest_rev_only: bool = False,
     ):
         """
         :param path: storage path (data_dir)
@@ -422,7 +423,7 @@ class PageItem:
     Moin 1.9 page.
     """
 
-    def __init__(self, backend, path, itemname, target_namespace, latest_rev_only=False):
+    def __init__(self, backend: PageBackend, path, itemname, target_namespace, latest_rev_only=False):
         self.backend = backend
         self.name = itemname
         self.path = path
@@ -504,7 +505,7 @@ class PageRevision:
     moin 1.9 page revision
     """
 
-    def __init__(self, item, revno, path, target_namespace, latest_rev_only=False):
+    def __init__(self, item: PageItem, revno, path, target_namespace, latest_rev_only=False):
         item_name = item.name
         itemid = item.itemid
         editlog = item.editlog
@@ -609,7 +610,8 @@ class PageRevision:
                 meta[NAMESPACE] = custom_namespace
                 meta[NAME] = [meta[NAME][0][len(custom_namespace) + 1 :]]
                 break
-        self.meta = {}
+
+        self.meta: MetaData = {}
         for k, v in meta.items():
             if isinstance(v, list):
                 v = tuple(v)

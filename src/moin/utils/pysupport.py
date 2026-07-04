@@ -47,7 +47,7 @@ def isImportable(module):
         return 0
 
 
-def getPluginModules(packagedir):
+def getPluginModules(packagedir: str) -> list[str]:
     """
     Return a list of plugin modules for a given plugin package dir,
     omitting any that start with an underscore.

@@ -229,7 +229,7 @@ def GetItem(name, meta, data, revid, crlf) -> None:
 @click.option(
     "--overwrite", "-o", is_flag=True, default=False, help="If given, overwrite existing revisions, if requested."
 )
-def PutItem(meta, data, overwrite: bool) -> None:
+def PutItem(meta: str, data: str, overwrite: bool) -> None:
     logger.info("Put item started")
     put_item(meta, data, overwrite)
     logger.info("Put item finished")
@@ -238,7 +238,7 @@ def PutItem(meta, data, overwrite: bool) -> None:
 @cli.command("load-help", help="Load a directory of help .data and .meta file pairs into a wiki namespace")
 @click.option("--namespace", "-n", type=str, required=True, help="Namespace to be loaded: help-common, help-en, etc.")
 @click.option("--path_to_help", "--path", "-p", type=str, help="Override source directory, default is src/moin/help")
-def LoadHelp(namespace, path_to_help) -> None:
+def LoadHelp(namespace: str, path_to_help) -> None:
     load_help(namespace, path_to_help)
 
 

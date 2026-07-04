@@ -66,7 +66,7 @@ class Backend(BackendBase):
         data_store_uri = store_uri % dict(kind="data")
         return cls(module.BytesStore.from_uri(meta_store_uri), module.FileStore.from_uri(data_store_uri))
 
-    def __init__(self, meta_store: BytesStoreBase, data_store: FileStoreBase, read_only: bool = False):
+    def __init__(self, meta_store: BytesStoreBase, data_store: FileStoreBase, read_only: bool = False) -> None:
         """
         :param meta_store: a ByteStore for metadata
         :param data_store: a FileStore for data

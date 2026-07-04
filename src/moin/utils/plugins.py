@@ -39,7 +39,7 @@ class PluginAttributeError(PluginError):
     """Raised when a plugin does not contain an attribute."""
 
 
-def importPlugin(cfg: WikiConfigProtocol, kind: str, name: str, function="execute"):
+def importPlugin(cfg: WikiConfigProtocol, kind: str, name: str, function: str = "execute"):
     """Import a wiki or built-in plugin.
 
     Returns the <function> attribute from a plugin module <name>.
@@ -68,7 +68,7 @@ def importPlugin(cfg: WikiConfigProtocol, kind: str, name: str, function="execut
         return importBuiltinPlugin(kind, name, function)
 
 
-def importWikiPlugin(cfg: WikiConfigProtocol, kind: str, name: str, function="execute"):
+def importWikiPlugin(cfg: WikiConfigProtocol, kind: str, name: str, function: str = "execute"):
     """Import plugin from the wiki data directory
 
     See importPlugin docstring.
@@ -81,7 +81,7 @@ def importWikiPlugin(cfg: WikiConfigProtocol, kind: str, name: str, function="ex
     return importNameFromPlugin(moduleName, function)
 
 
-def importBuiltinPlugin(kind: str, name: str, function="execute"):
+def importBuiltinPlugin(kind: str, name: str, function: str = "execute"):
     """Import built-in plugin from the MoinMoin package.
 
     See importPlugin docstring.

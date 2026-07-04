@@ -157,7 +157,7 @@ if TYPE_CHECKING:
 logger = getLogger(__name__)
 
 
-def get_multistage_continuation_url(auth_name, extra_fields={}):
+def get_multistage_continuation_url(auth_name: str, extra_fields: dict[str, Any] = {}) -> str:
     """
     get_continuation_url - return a multistage continuation URL
 

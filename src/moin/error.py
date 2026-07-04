@@ -7,6 +7,8 @@ MoinMoin errors / exception classes.
 
 from __future__ import annotations
 
+from typing import Any
+
 import sys
 
 
@@ -27,7 +29,7 @@ class Error(Exception):
     When you want to render an error, use unicode() or str() as needed.
     """
 
-    def __init__(self, message):
+    def __init__(self, message: Any):
         """Initialize an error, decode if needed
 
         :param message: str, bytes or object that supports __str__.
@@ -38,7 +40,7 @@ class Error(Exception):
             message = str(message)
         self.message = message
 
-    def __str__(self):
+    def __str__(self) -> str:
         """Return the error message as str."""
         return self.message
 
@@ -69,7 +71,7 @@ class CompositeError(Error):
     HairyLowLevelError traceback are available.
     """
 
-    def __init__(self, message):
+    def __init__(self, message: Any) -> None:
         """Save system exception info before this exception is raised."""
         Error.__init__(self, message)
         self.innerException = sys.exc_info()
