@@ -437,7 +437,7 @@ def before_wiki():
     if request_path.startswith("/.well-known/"):
         return "", 204
 
-    logger.debug("running before_wiki")
+    logger.debug(f"running before_wiki on {request.path if request else '-'}")
 
     clock = flaskg.clock = Clock()
     clock.start("total")
@@ -488,10 +488,11 @@ def teardown_wiki(response):
             storage = flaskg.storage
             for cache in (storage.parse_acl, storage.eval_acl, storage.get_acls, storage.allows):
                 if cache.cache_info()[3] > 0:
-                    msg = "cache = %s: hits = %s, misses = %s, maxsize = %s, size = %s" % (
-                        (cache.__name__,) + cache.cache_info()
+                    logger.debug(
+                        "cache = %s: hits = %s, misses = %s, maxsize = %s, size = %s",
+                        cache.__name__,
+                        *cache.cache_info(),
                     )
-                    logger.debug(msg)
         except AttributeError:
             # moin commands may not have flaskg.storage
             pass
