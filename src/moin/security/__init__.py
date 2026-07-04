@@ -186,63 +186,69 @@ class AccessControlList(AutoNe):
 
     special_users = ["All", "Known", "Trusted"]  # order is important
 
-    def __init__(self, lines=[], default="", valid=None):
-        """Initialize an ACL, starting from <nothing>."""
+    def __init__(self, lines: list[str] | tuple[str] = [], *, valid: list[str], default: str = ""):
+        """
+        Initialize an ACL, starting from <nothing>.
+        """
         assert valid is not None
+        assert isinstance(lines, (list, tuple))
         self.acl_rights_valid = valid
         self.default = default
-        assert isinstance(lines, (list, tuple))
+        self.acl: list[str] | None = None
+        self.acl_lines: list[str] | None = None
+
+        def _addLine(self, aclstring: str, remember: bool = True) -> None:
+            """
+            Add another ACL line
+
+            This can be used in multiple subsequent calls to process longer lists.
+
+            :param aclstring: acl string from item or configuration
+            :param remember: should add the line to self.acl_lines
+            """
+            # Remember lines
+            if remember:
+                self.acl_lines.append(aclstring)
+
+            # Iterate over entries and rights, parsed by acl string iterator
+            acliter = ACLStringIterator(self.acl_rights_valid, aclstring)
+            for modifier, entries, _rights in acliter:
+                if entries == ["Default"]:
+                    self._addLine(self.default, remember=0)
+                else:
+                    for entry in entries:
+                        rightsdict = {}
+                        if modifier:
+                            # Only user rights are added to the right dict.
+                            # + add right with value of 1
+                            # - add right with value of 0
+                            for right in _rights:
+                                rightsdict[right] = modifier == "+"
+                        else:
+                            # All rights from acl_rights_valid are added to the
+                            # dict, user rights with value of 1, and other with
+                            # value of 0
+                            for right in self.acl_rights_valid:
+                                rightsdict[right] = right in _rights
+                        self.acl.append((entry, rightsdict))
+
         if lines:
             self.acl = []  # [ ('User', {"read": 0, ...}), ... ]
             self.acl_lines = []
             for line in lines:
-                self._addLine(line)
-        else:
-            self.acl = None
-            self.acl_lines = None
+                _addLine(self, line)
 
     def has_acl(self):
-        """Checks whether we have a real acl here."""
+        """
+        Checks whether we have a real acl here.
+        """
         # self.acl == None means that there is NO acl.
         # self.acl == [] means that there is a empty acl.
         return self.acl is not None
 
-    def _addLine(self, aclstring, remember=1):
-        """Add another ACL line
-
-        This can be used in multiple subsequent calls to process longer lists.
-
-        :param aclstring: acl string from item or configuration
-        :param remember: should add the line to self.acl_lines
+    def may(self, name: str, dowhat: str) -> bool | None:
         """
-        # Remember lines
-        if remember:
-            self.acl_lines.append(aclstring)
-
-        # Iterate over entries and rights, parsed by acl string iterator
-        acliter = ACLStringIterator(self.acl_rights_valid, aclstring)
-        for modifier, entries, _rights in acliter:
-            if entries == ["Default"]:
-                self._addLine(self.default, remember=0)
-            else:
-                for entry in entries:
-                    rightsdict = {}
-                    if modifier:
-                        # Only user rights are added to the right dict.
-                        # + add right with value of 1
-                        # - add right with value of 0
-                        for right in _rights:
-                            rightsdict[right] = modifier == "+"
-                    else:
-                        # All rights from acl_rights_valid are added to the
-                        # dict, user rights with value of 1, and other with
-                        # value of 0
-                        for right in self.acl_rights_valid:
-                            rightsdict[right] = right in _rights
-                    self.acl.append((entry, rightsdict))
-
-    def may(self, name, dowhat):
-        """May <name> <dowhat>? Returns boolean answer.
+        May <name> <dowhat>? Returns boolean answer.
 
         Note: this just checks THIS ACL, the before/default/after ACL must
               be handled elsewhere, if needed.
