@@ -19,13 +19,14 @@ use a Config class to define the required configuration within the test class.
 from __future__ import annotations
 
 import os.path
-import pytest
 import py
+import pytest
 
 from flask.ctx import AppContext
 
-import moin.log
 import moin
+import moin.log
+
 from moin.app import create_app_ext, destroy_app, before_wiki, teardown_wiki
 from moin._tests import wikiconfig, get_open_wiki_files
 from moin.storage import create_simple_mapping

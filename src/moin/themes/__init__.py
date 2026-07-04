@@ -35,10 +35,10 @@ from moin.constants.namespaces import NAMESPACE_DEFAULT, NAMESPACE_USERS, NAMESP
 from moin.constants.rights import SUPERUSER
 from moin.security.csp import get_csp_nonce
 from moin.user import User
-from moin.utils.interwiki import split_interwiki, getInterwikiHome, is_local_wiki, is_known_wiki, url_for_item
-from moin.utils.clock import timed
-from moin.utils.mime import Type
 from moin.utils import show_time
+from moin.utils.clock import timed
+from moin.utils.interwiki import split_interwiki, getInterwikiHome, is_local_wiki, is_known_wiki, url_for_item
+from moin.utils.mime import Type
 from moin.utils.names import CompositeName, get_fqname, parent_names, split_fqname
 
 if TYPE_CHECKING:

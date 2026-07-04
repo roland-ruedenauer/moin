@@ -21,9 +21,9 @@ from flask.cli import FlaskGroup
 from whoosh.query import Term, And, Regex, Not
 
 from moin import current_app, flaskg, log
+from moin.app import create_app, before_wiki
 from moin.constants.keys import NAME, NAME_SORT, NAME_EXACT, NAMESPACE, REVID, PARENTID, REV_NUMBER, MTIME
 from moin.constants.namespaces import NAMESPACE_USERPROFILES
-from moin.app import create_app, before_wiki
 
 logging = log.getLogger(__name__)
 

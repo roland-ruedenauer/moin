@@ -139,8 +139,6 @@ from __future__ import annotations
 from typing import Any, cast, TYPE_CHECKING
 
 from urllib.parse import quote, quote_plus
-from werkzeug.exceptions import abort
-from werkzeug.utils import redirect
 
 from flask import url_for, session, request
 
@@ -149,6 +147,9 @@ from moin.i18n import _
 from moin.log import getLogger
 from moin.user import User
 from moin.utils.markup import safe_markup
+
+from werkzeug.exceptions import abort
+from werkzeug.utils import redirect
 
 if TYPE_CHECKING:
     from markupsafe import Markup

@@ -15,9 +15,9 @@ import click
 from flask.cli import FlaskGroup
 
 from moin import current_app, log
-from moin.storage.middleware.serialization import serialize, deserialize
 from moin.app import create_app
 from moin.cli._util import get_backends, drop_and_recreate_index
+from moin.storage.middleware.serialization import serialize, deserialize
 
 logging = log.getLogger(__name__)
 

@@ -10,8 +10,7 @@ from __future__ import annotations
 
 import pytest
 
-from moin import current_app
-from moin import wikiutil
+from moin import current_app, wikiutil
 from moin.wikiutil import WikiLinkInfo
 
 

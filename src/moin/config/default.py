@@ -13,11 +13,11 @@ MoinMoin - Configuration defaults class
 
 from __future__ import annotations
 
-import re
-import os
-
 from typing import Any, TYPE_CHECKING, NamedTuple
 from typing_extensions import Final
+
+import re
+import os
 
 from babel import Locale, parse_locale
 

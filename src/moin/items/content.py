@@ -45,8 +45,6 @@ from werkzeug.http import is_resource_modified
 
 from whoosh.query import Term, And
 
-from moin import current_app, flaskg
-
 try:
     import PIL
     from PIL import Image as PILImage
@@ -54,7 +52,7 @@ try:
 except ImportError:
     PIL = PILImage = PILdiff = None
 
-from moin import log, wikiutil
+from moin import current_app, flaskg, log, wikiutil
 from moin.constants.contenttypes import (
     GROUP_MARKUP_TEXT,
     GROUP_OTHER_TEXT,
