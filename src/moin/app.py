@@ -115,7 +115,6 @@ class MoinApp(Flask):
                 self.jinja_env.loader = ChoiceLoader([FileSystemLoader(self.cfg.template_dirs), self.jinja_env.loader])
             self.register_error_handler(403, themed_error)
             self.context_processor(inject_common_template_vars)
-            self.cfg.custom_css_path = os.path.isfile("wiki_local/custom.css")
             setup_jinja_env(self.jinja_env)
 
         # create global counter to limit content security policy reports, prevent spam
@@ -184,8 +183,6 @@ class MoinApp(Flask):
         cfg = moin_config_class()
         if not isinstance(cfg, WikiConfigProtocol):
             raise ConfigurationError("Configuration does not implement WikiConfigProtocol")
-
-        cfg.custom_css_path = os.path.isfile(os.path.join(cfg.wiki_local_dir, "custom.css"))
 
         cfg.serve_files.update(get_xstatic_module_path_map(cfg.mod_names))
 

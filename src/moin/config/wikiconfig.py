@@ -68,6 +68,9 @@ class Config(DefaultConfig):
         # change target if a specific release or language is available
         serve_files["external_docs"] = "https://moin-20.readthedocs.io/en/latest/"
 
+    # Check for the presence of a custom CSS file
+    custom_css_path = os.path.isfile(os.path.join(wiki_local_dir, "custom.css"))
+
     # Copy templates/snippets.html to the directory below and edit as required to customize logos, etc.
     template_dirs = [wiki_local_dir]
 
