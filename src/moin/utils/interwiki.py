@@ -18,11 +18,10 @@ from moin import current_app
 from moin.constants.keys import CURRENT, NAME_EXACT
 from moin.constants.contenttypes import CHARSET
 from moin.constants.namespaces import NAMESPACE_USERS
+from moin.log import getLogger
 from moin.utils.names import get_fqname, split_fqname, split_namespace
 
-from moin import log
-
-logging = log.getLogger(__name__)
+logger = getLogger(__name__)
 
 
 def is_local_wiki(wiki_name):
@@ -80,7 +79,7 @@ def url_for_item(
         try:
             wiki_base_url = current_app.cfg.interwiki_map[wiki_name]
         except KeyError:
-            logging.warning(f"no interwiki_map entry for {wiki_name!r}")
+            logger.warning(f"no interwiki_map entry for {wiki_name!r}")
             item_name = get_fqname(item_name, field, namespace)
             if wiki_name:
                 url = f"{wiki_name}/{item_name}"
