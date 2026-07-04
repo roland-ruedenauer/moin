@@ -58,7 +58,7 @@ from whoosh.query import Term, Prefix, And, Or, Not, DateRange
 from whoosh.query.qcore import QueryError, TermNotFound
 from whoosh.analysis import StandardAnalyzer
 
-from moin import current_app, flaskg, log
+from moin import current_app, flaskg
 from moin.constants.contenttypes import *  # noqa
 from moin.constants.forms import WIDGET_HIDDEN
 from moin.constants.itemtypes import ITEMTYPE_DEFAULT, ITEMTYPE_NONEXISTENT
@@ -101,6 +101,7 @@ from moin.items import (
     find_matches,
 )
 from moin.items.content import content_registry, conv_serialize
+from moin.log import getLogger
 from moin.search import SearchForm
 from moin.search.analyzers import item_name_analyzer
 from moin.security.csp import add_csp_headers
@@ -121,9 +122,9 @@ from moin.utils.tree import html, docbook, xlink, xml
 if TYPE_CHECKING:
     from werkzeug.wrappers import Response as ResponseBase
 
-logger = log.getLogger(__name__)
+logger = getLogger(__name__)
 
-cspreport_logger = log.getLogger("cspreport")
+cspreport_logger = getLogger("cspreport")
 
 jfu_server_lock = threading.Lock()
 
