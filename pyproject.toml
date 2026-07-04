@@ -114,9 +114,6 @@ addopts = ["--ignore=_ui_tests"]
 norecursedirs = [".git", "_build", "tmp*", "env*", "dlc", "wiki", "support"]
 env_files = [".env", ".env.test"]
 
-[tool.mypy]
-mypy_path = "$MYPY_CONFIG_FILE_DIR/typings"
-
 [tool.ruff]
 line-length = 120
 target-version = "py310"

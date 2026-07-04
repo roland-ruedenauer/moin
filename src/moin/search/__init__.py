@@ -5,6 +5,8 @@
 MoinMoin - search package.
 """
 
+from __future__ import annotations
+
 from moin.i18n import L_
 from moin.forms import Search
 

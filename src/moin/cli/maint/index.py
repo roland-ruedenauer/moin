@@ -7,6 +7,8 @@ MoinMoin - CLI commands to manage Whoosh indexes (creating, destroying, building
 updating, moving, optimizing, and displaying).
 """
 
+from __future__ import annotations
+
 import click
 
 from flask.cli import FlaskGroup

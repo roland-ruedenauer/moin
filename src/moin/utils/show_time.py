@@ -1,6 +1,8 @@
 # Copyright: 2019 MoinMoin:RogerHaase
 # License: GNU GPL v2 (or any later version), see LICENSE.txt for details.
 
+from __future__ import annotations
+
 import pytz
 
 import flask_babel

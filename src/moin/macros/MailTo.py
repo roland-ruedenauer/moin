@@ -8,6 +8,8 @@ For logged-in users, it shows a valid mailto: link; otherwise, it displays the
 obfuscated string passed as the first macro argument.
 """
 
+from __future__ import annotations
+
 from moin import flaskg
 
 from moin.utils.tree import moin_page, xlink

@@ -13,6 +13,8 @@ recognize it as a group. This default pattern can be changed (e.g., for non-Engl
 see HelpOnConfiguration.
 """
 
+from __future__ import annotations
+
 from moin import flaskg
 
 from moin.constants.keys import CURRENT, USERGROUP

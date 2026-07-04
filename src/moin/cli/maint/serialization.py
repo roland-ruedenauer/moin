@@ -7,6 +7,8 @@
 MoinMoin - CLI commands to serialize and deserialize backends.
 """
 
+from __future__ import annotations
+
 import sys
 import click
 

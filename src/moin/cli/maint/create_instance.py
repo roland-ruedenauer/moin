@@ -27,6 +27,8 @@ Optionally, populate the empty wiki with additional commands:
     moin load-help <options>
 """
 
+from __future__ import annotations
+
 import os
 import shutil
 import click

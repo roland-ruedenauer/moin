@@ -14,6 +14,8 @@ To use this, import exactly these names (no less, no more):
     # L_ is lazy_gettext
 """
 
+from __future__ import annotations
+
 from babel import Locale
 
 from flask import request

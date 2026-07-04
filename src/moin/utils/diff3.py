@@ -5,6 +5,8 @@
 MoinMoin - diff3 algorithm.
 """
 
+from __future__ import annotations
+
 default_markers = ("<<<<<<<<<<<<<<<<<<<<<<<<<\n", "=========================\n", ">>>>>>>>>>>>>>>>>>>>>>>>>\n")
 
 

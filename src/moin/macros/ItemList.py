@@ -63,6 +63,8 @@ Examples:
     <<ItemList(item="Foo/Bar", ordered='True', display="UnCameled")>>
 """
 
+from __future__ import annotations
+
 import re
 from flask import request
 from moin import flaskg

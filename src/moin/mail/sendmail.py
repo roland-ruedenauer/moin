@@ -7,6 +7,8 @@
 MoinMoin - Email helper functions.
 """
 
+from __future__ import annotations
+
 import smtplib
 import ssl
 

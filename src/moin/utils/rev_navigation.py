@@ -5,6 +5,8 @@
 Helper to get prior, current, and next revisions and modification times.
 """
 
+from __future__ import annotations
+
 from flask import request
 from whoosh.query import Term, And
 from moin import flaskg

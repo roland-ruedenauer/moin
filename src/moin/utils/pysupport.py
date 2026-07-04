@@ -6,6 +6,8 @@
 MoinMoin - supporting functions for Python magic.
 """
 
+from __future__ import annotations
+
 import os
 import sys
 import re

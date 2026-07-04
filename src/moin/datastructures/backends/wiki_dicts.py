@@ -8,6 +8,8 @@
 MoinMoin - WikiDict functions.
 """
 
+from __future__ import annotations
+
 from flask import flash
 
 from moin import flaskg

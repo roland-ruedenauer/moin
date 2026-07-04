@@ -6,6 +6,8 @@
 MoinMoin - parameter parsing and invoking of extension functions.
 """
 
+from __future__ import annotations
+
 from functools import cmp_to_key
 
 from moin.i18n import _

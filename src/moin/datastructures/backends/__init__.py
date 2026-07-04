@@ -5,6 +5,8 @@
 MoinMoin - base classes for data structures.
 """
 
+from __future__ import annotations
+
 from collections import UserDict
 
 from moin import current_app, flaskg

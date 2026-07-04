@@ -8,8 +8,9 @@ Call activate_hook() as early as possible in program execution. Then you can
 trigger the output of tracebacks of all threads by calling trigger_dump().
 """
 
-__all__ = "activate_hook trigger_dump dump_regularly".split()
+from __future__ import annotations
 
+__all__ = "activate_hook trigger_dump dump_regularly".split()
 
 import sys
 import threading

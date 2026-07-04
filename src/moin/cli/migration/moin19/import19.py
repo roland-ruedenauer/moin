@@ -7,11 +7,14 @@
 MoinMoin - import content and user data from a Moin 1.9–compatible storage into the Moin 2 storage.
 """
 
+from __future__ import annotations
+
 import os
 import re
 import sys
 import codecs
 import importlib
+
 from io import BytesIO
 
 import click

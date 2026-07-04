@@ -11,6 +11,8 @@ MoinMoin - CLI command to reduce item revisions.
 Remove all revisions except the latest one from selected items.
 """
 
+from __future__ import annotations
+
 import click
 import io
 

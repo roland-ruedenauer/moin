@@ -5,6 +5,8 @@
 MoinMoin - GetVal macro retrieves a value for a specified key from a dict.
 """
 
+from __future__ import annotations
+
 from moin import flaskg
 
 from moin.macros._base import MacroInlineBase, fail_message

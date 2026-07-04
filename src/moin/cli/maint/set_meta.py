@@ -12,6 +12,8 @@ This command duplicates the last revision of the selected item
 and sets or removes metadata.
 """
 
+from __future__ import annotations
+
 import click
 import io
 import sys
@@ -19,7 +21,6 @@ import sys
 from ast import literal_eval
 
 from flask.cli import FlaskGroup
-
 from whoosh.query import Every
 
 from moin import current_app, flaskg, log
