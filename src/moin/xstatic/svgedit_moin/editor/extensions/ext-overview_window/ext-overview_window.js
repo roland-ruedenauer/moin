@@ -1,4 +1,4 @@
-import { dragmove } from "./dragmove/dragmove.js";
+import dragmove from "./dragmove/dragmove.js";
 //#region src/editor/extensions/ext-overview_window/ext-overview_window.js
 /**
 * @file ext-overview_window.js
@@ -42,10 +42,9 @@ var ext_overview_window_default = {
 		const updateViewDimensions = function() {
 			const viewWidth = parseFloat(getComputedStyle($id("svgroot"), null).width.replace("px", ""));
 			const viewHeight = parseFloat(getComputedStyle($id("svgroot"), null).height.replace("px", ""));
-			const viewX = 640;
 			const svgWidthOld = parseFloat(getComputedStyle($id("overviewMiniView"), null).width.replace("px", ""));
 			const svgHeightNew = viewHeight / viewWidth * svgWidthOld;
-			$id("overviewMiniView").setAttribute("viewBox", viewX + " 480 " + viewWidth + " " + viewHeight);
+			$id("overviewMiniView").setAttribute("viewBox", "640 480 " + viewWidth + " " + viewHeight);
 			$id("overviewMiniView").setAttribute("height", svgHeightNew);
 			updateViewBox();
 		};
